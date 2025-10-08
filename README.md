@@ -1,15 +1,31 @@
-# Project_Template
+# Project Template — *FlepiMoP2*
 
-Welcome to the Atlantic Coast Center for Infectious Disease Dynamics and Analytics (ACCIDDA) template project repository for the `Flexible Epidemic Modeling Pipeline 2` pipeline. “FlepiMoP2” provides a framework for quickly implmenting and simulating infectious disease models to project epidemic trajectories and their healthcare impacts, and to evaluate the impact of potential interventions.
+Welcome to the **Atlantic Coast Center for Infectious Disease Dynamics and Analytics (ACCIDDA)** project template repository for the  
+**Flexible Epidemic Modeling Pipeline 2** (*FlepiMoP2*).
 
-We recommend that most users clone this repo to ensure that their projects are well organized.  
+FlepiMoP2 provides a framework for rapidly implementing and simulating infectious disease models — enabling users to project epidemic trajectories, estimate healthcare impacts, and evaluate potential interventions under various scenarios.
 
-## General guidelines for keeping clean project repositories:
-    - Use version control / GitHub to archive old versions rahter than an active archive folder
-    - Avoid duplication of model input across different configs unless absolutely nessecary 
-    - Make single PDF figures for diagnostic plotting which compile your results rather than `PNG` or `JPEG` spaghetti
-    - Keep all input data where `csv`, `parquet` etc. files stored in one common parent folder such as `./Model_Input/Data/Time_Series/Vaccination` and `./Model_Input/Data/Population_Structure/Initial_Conditions`
-    - Similalry, keep good hygene around plugins such as `./Model_Input/Plugins/Initial_Conditions.py`
+We recommend that most users **clone this template repository** when starting a new project to ensure consistent structure and reproducibility.
+
+---
+
+## General Guidelines for Clean Project Repositories
+
+- **Use version control** (Git/GitHub) to track historical changes instead of keeping “Archive” folders.  
+- **Avoid duplication** of model input files across configurations unless absolutely necessary.  
+- **Generate single-PDF diagnostic plots** instead of many loose `.png` or `.jpg` figures.  
+- **Organize all data inputs** consistently under a common hierarchy.
+- **Maintain clean modular plugins** (e.g., inital condtions, seeding, or time-varying modifiers).  
+
+---
+
+## How to clone:
+```bash
+git clone https://github.com/ACCIDDA/Project_Template.git My_New_Project
+cd My_New_Project
+```
+
+
 
 
 
