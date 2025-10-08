@@ -1,0 +1,40 @@
+---
+name: 'CI'
+
+'on':
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Install just'
+        # v3.0.0
+        uses: 'extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff'
+      - name: 'Install air'
+        # v1.0.0
+        uses: 'posit-dev/setup-air@63e80dedb6d275c94a3841e15e5ff8691e1ab237'
+      - name: 'Checkout repository'
+        # v5.0.0
+        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8'
+      - name: 'Setup conda'
+        # v3.2.0
+        uses: 'conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f'
+        with:
+          activate-environment: 'ci'
+          auto-update-conda: true
+      - name: 'Cache conda'
+        id: 'cache-conda'
+        uses: 'actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830'  # v4.3.0
+        with:
+          path: '${{ env.CONDA }}/envs'
+          key: "${{ runner.os }}-${{ hashFiles('environment.yaml') }}"
+      - name: 'Update conda environment'
+        run: 'conda env update --name ci --file environment.yaml --prune'
+        if: "steps.cache-conda.outputs.cache-hit != 'true'"
+      - name: 'Run ci'
+        shell: bash -el {0}
+        run: 'just ci'

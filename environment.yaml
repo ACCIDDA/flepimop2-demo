@@ -1,0 +1,16 @@
+---
+channels:
+  - 'conda-forge'
+  - 'defaults'
+  - 'r'
+  - 'dnachun'
+dependencies:
+  - 'python>=3.10'
+  - 'pip'
+  # - pip:
+  #     - 'git+ssh://git@github.com/ACCIDDA/flepimop2.git@main'
+  - 'yamllint'
+  - 'ruff'
+  - 'r-base>=4.3'
+  - 'pyarrow==18.0.0'
+  - 'r-arrow==18.0.0'
