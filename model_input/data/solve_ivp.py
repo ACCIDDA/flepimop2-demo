@@ -47,7 +47,5 @@ def runner(
         raise ValueError("time span must not be less than zero")
 
     args = tuple(val for val in params.values()) if params is not None else None
-    import inspect
-    print(f"fun: {inspect.signature(fun)}")
     result = solve_ivp(fun, (t0, tf), y0, t_eval=times, args=args, **solver_options)
     return np.transpose(np.vstack((result.t, result.y)))
