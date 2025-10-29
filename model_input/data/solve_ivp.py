@@ -1,50 +1,45 @@
-from typing import Callable, Sequence, Optional, Dict, Any
+# noqa: INP001, D100
+
+from typing import Any
 
 import numpy as np
-from scipy.integrate import solve_ivp
 from flepimop2.system import FloatArray, SystemProtocol
+from scipy.integrate import solve_ivp
 
-
-"""
-Wrapper around scipy.integrate.solve_ivp that accepts:
-- fun: callable with signature fun(t, y, **params)
-- times: sequence of times at which to evaluate the solution (t_eval)
-- y0: initial state (sequence)
-- params: dict of extra parameters passed as keyword args to fun
-- **solver_options: forwarded to scipy.integrate.solve_ivp
-
-Returns the scipy OdeResult object.
-"""
 
 def runner(
     fun: SystemProtocol,
     times: FloatArray,
     y0: FloatArray,
-    params: Optional[Dict[str, Any]] = None,
-    **solver_options: Any,
+    params: dict[str, Any] | None = None,
+    **solver_options: Any,  # noqa: ANN401
 ) -> FloatArray:
-    """
-    Solve an initial value problem using scipy.solve_ivp.
+    """Solve an initial value problem using scipy.solve_ivp.
 
-    Parameters
-    - fun: callable(t, y, **params) -> dy/dt
-    - times: sequence of times to evaluate the solution at (t_eval). Must have length >= 2.
-    - y0: initial condition (array-like)
-    - params: dict of keyword parameters forwarded to fun
-    - solver_options: additional keyword options forwarded to scipy.integrate.solve_ivp
+    Args:
+        fun (SystemProtocol): A function that computes derivatives.
+        times (FloatArray): sequence of time points where we evaluate the solution. Must
+          have length >= 1.
+        y0 (FloatArray): Initial condition.
+        params: Optional dict of keyword parameters forwarded to fun.
+        **solver_options: Additional keyword options forwarded to
+          scipy.integrate.solve_ivp.
 
-    Returns
-    - FloatArray (with .t and .y evaluated at `times`)
+    Returns:
+        FloatArray: Array with time and state values evaluated at `times`.
+        Each row is [t, y...].
+
     """
-    
-    if times.ndim != 1:
-        raise ValueError("times must be a 1D sequence of time points")
+    if not (times.ndim == 1 and times.size >= 1):
+        msg = "times must be a 1D sequence of time points"
+        raise ValueError(msg)
 
     times.sort()
 
     t0, tf = 0.0, times[-1]
     if times[0] < t0:
-        raise ValueError("time span must not be less than zero")
+        msg = f"times[0] must be >= 0; got times[0]={times[0]}"
+        raise ValueError(msg)
 
     args = tuple(val for val in params.values()) if params is not None else None
     result = solve_ivp(fun, (t0, tf), y0, t_eval=times, args=args, **solver_options)
