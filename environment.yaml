@@ -7,8 +7,8 @@ channels:
 dependencies:
   - 'python>=3.10'
   - 'pip'
-  # - pip:
-  #     - 'git+ssh://git@github.com/ACCIDDA/flepimop2.git@main'
+  - pip:
+    - 'git+file:///home/holism/workspaces/flepimop2@mock-engine'
   - 'yamllint'
   - 'ruff'
   - 'r-base>=4.3'
