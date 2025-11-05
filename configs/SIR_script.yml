@@ -1,29 +1,22 @@
 name: SIR_handwritten_model
 
 system:
-  demo:
-    module: wrapper
+  - module: wrapper
     script: model_input/data/SIR.py
 
 engine:
-  demo:
-    module: wrapper
+  - module: wrapper
     script: model_input/data/solve_ivp.py
 
 simulate:
   demo:
-    system: demo
-    engine: demo
-    backend: demo
     times: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 backend:
-  demo:
-    module: csv
+  - module: csv
 
 process:
-  demo:
-    module: shell
+  - module: shell
     command: Rscript postprocessing/SIR_plot.R
     args:
       - configs/SIR_script.yml

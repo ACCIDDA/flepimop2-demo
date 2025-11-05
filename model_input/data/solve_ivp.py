@@ -3,24 +3,25 @@
 from typing import Any
 
 import numpy as np
-from flepimop2.system import FloatArray, SystemProtocol
+from numpy.typing import NDArray
+from flepimop2.system import SystemProtocol
 from scipy.integrate import solve_ivp
 
 
 def runner(
     fun: SystemProtocol,
-    times: FloatArray,
-    y0: FloatArray,
+    times: NDArray[np.float64],
+    y0: NDArray[np.float64],
     params: dict[str, Any] | None = None,
     **solver_options: Any,  # noqa: ANN401
-) -> FloatArray:
+) -> NDArray[np.float64]:
     """Solve an initial value problem using scipy.solve_ivp.
 
     Args:
         fun (SystemProtocol): A function that computes derivatives.
-        times (FloatArray): sequence of time points where we evaluate the solution. Must
+        times (NDArray[np.float64]): sequence of time points where we evaluate the solution. Must
           have length >= 1.
-        y0 (FloatArray): Initial condition.
+        y0 (NDArray[np.float64]): Initial condition.
         params: Optional dict of keyword parameters forwarded to fun.
         **solver_options: Additional keyword options forwarded to
           scipy.integrate.solve_ivp.
