@@ -3,8 +3,8 @@
 from typing import Any
 
 import numpy as np
-from numpy.typing import NDArray
 from flepimop2.system import SystemProtocol
+from numpy.typing import NDArray
 from scipy.integrate import solve_ivp
 
 
@@ -19,8 +19,8 @@ def runner(
 
     Args:
         fun (SystemProtocol): A function that computes derivatives.
-        times (NDArray[np.float64]): sequence of time points where we evaluate the solution. Must
-          have length >= 1.
+        times (NDArray[np.float64]): sequence of time points where we evaluate the
+          solution. Must have length >= 1.
         y0 (NDArray[np.float64]): Initial condition.
         params: Optional dict of keyword parameters forwarded to fun.
         **solver_options: Additional keyword options forwarded to
