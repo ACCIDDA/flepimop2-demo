@@ -2,11 +2,11 @@ name: SIR_handwritten_model
 
 system:
   - module: wrapper
-    script: model_input/data/SIR.py
+    script: model_input/plugins/SIR.py
 
 engine:
   - module: wrapper
-    script: model_input/data/solve_ivp.py
+    script: model_input/plugins/solve_ivp.py
 
 simulate:
   demo:

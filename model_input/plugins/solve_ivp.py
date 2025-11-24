@@ -3,7 +3,7 @@
 from typing import Any
 
 import numpy as np
-from flepimop2.system import SystemProtocol
+from flepimop2.system.abc import SystemProtocol
 from numpy.typing import NDArray
 from scipy.integrate import solve_ivp
 

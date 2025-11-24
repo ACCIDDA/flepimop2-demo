@@ -1,4 +1,11 @@
+target-version = "py311"
+
 [lint]
 select = [
     "ALL",
+]
+ignore = [
+    "COM812", # Missing trailing comma (conflicts with formatter)
+    "D203", # One blank line before class docstring (conflicts with D211)
+    "D213", # Multi-line docstring summary on the second line (conflicts with D212)
 ]
