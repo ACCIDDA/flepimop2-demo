@@ -1,12 +1,29 @@
 default: yamllint air ruff
 
+[doc('Generate environment file')]
+env:
+	#!/usr/bin/env bash
+	if [ -f environment.user.yaml ]; then 
+		yq -n '
+			load("environment.yaml") as $base | 
+			load("environment.user.yaml") as $user | 
+			$base | 
+			.dependencies = (($base.dependencies | map(select(has("pip") | not))) +
+			[((($user.dependencies // []) + ($base.dependencies // [])) |
+			map(select(has("pip"))) | .[0])])
+		' > .environment.yaml;
+	else 
+		cp environment.yaml .environment.yaml; 
+	fi
+
 [doc('Create a virtual environment using conda')]
-venv:
-	conda env create --prefix "venv/" --file environment.yaml
+venv: env
+	conda env create --prefix "venv/" --file .environment.yaml
 
 [doc('Clean the project directory by removing generated files and folders')]
 clean:
 	rm -rf venv/
+	rm -f .environment.yaml
 
 [group('lint')]
 [group('ci')]
