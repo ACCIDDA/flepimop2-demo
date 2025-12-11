@@ -1,6 +1,8 @@
 # Project template specific gitignore rules
 model_output/
 !model_output/.gitkeep
+.environment.yaml
+environment.user.yaml
 
 # Default python gitignore rules, from
 # https://github.com/github/gitignore/blob/main/Python.gitignore
