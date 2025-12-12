@@ -6,6 +6,7 @@ select = [
 ]
 ignore = [
     "COM812", # Missing trailing comma (conflicts with formatter)
-    "D203", # One blank line before class docstring (conflicts with D211)
-    "D213", # Multi-line docstring summary on the second line (conflicts with D212)
+    "D203",   # One blank line before class docstring (conflicts with D211)
+    "D213",   # Multi-line docstring summary on the second line (conflicts with D212)
+    "INP001", # Missing __init__.py file in package directory
 ]

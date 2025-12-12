@@ -1,11 +1,18 @@
-# noqa: INP001, D100
+"""SIR model plugin for flepimop2 demo."""
+
 import numpy as np
+from numpy.typing import NDArray
 
 
-def stepper(_t: float, y: np.ndarray, beta: float, gamma: float) -> np.ndarray:
-    """Dydt for the SIR model."""
-    y_S, y_I, _ = np.asarray(y, dtype=float)  # noqa: N806
-    infection = beta * y_S * y_I / np.sum(y)
-    recovery = gamma * y_I
-    dYdt = [-infection, infection - recovery, recovery]  # noqa: N806
-    return np.array(dYdt, dtype=float)
+def stepper(
+    t: float,  # noqa: ARG001
+    y: NDArray[np.float64],
+    beta: float,
+    gamma: float,
+) -> NDArray[np.float64]:
+    """dY/dt for the SIR model."""
+    y_s, y_i, _ = np.asarray(y, dtype=float)
+    infection = (beta * y_s * y_i) / np.sum(y)
+    recovery = gamma * y_i
+    dydt = [-infection, infection - recovery, recovery]
+    return np.array(dydt, dtype=float)
