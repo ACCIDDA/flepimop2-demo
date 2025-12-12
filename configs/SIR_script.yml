@@ -30,6 +30,10 @@ process:
     args:
       - configs/SIR_script.yml
       - model_output/SIR_plot_hires.png
+  jupyter_render:
+    module: ipynbrender
+    file: postprocessing/SirPlot.ipynb
+    output: model_output/SirPlot.html
 
 parameter:
   beta: 0.3

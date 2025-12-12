@@ -1,4 +1,4 @@
-# noqa: INP001, D100
+"""ODE solver plugin that wraps `scipy.integrate.solve_ivp` for flepimop2 demo."""
 
 from typing import Any
 

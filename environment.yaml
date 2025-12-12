@@ -8,9 +8,11 @@ dependencies:
   - 'pip'
   - pip:
       - 'git+https://git@github.com/ACCIDDA/flepimop2.git@main'
+      - 'git+https://git@github.com/ACCIDDA/flepimop2-ipynbrender.git@main'
   - 'yamllint'
   - 'ruff'
   - 'scipy'
+  - 'plotnine'
   - 'r-base>=4.3'
   - 'pyarrow==18.0.0'
   - 'r-arrow==18.0.0'

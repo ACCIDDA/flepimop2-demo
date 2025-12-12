@@ -24,6 +24,7 @@ venv: env
 clean:
 	rm -rf venv/
 	rm -f .environment.yaml
+	rm -rf model_output/
 
 [group('lint')]
 [group('ci')]
