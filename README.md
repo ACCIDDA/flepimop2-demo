@@ -131,11 +131,21 @@ backend:
   - module: csv
 
 parameter:
-  beta: 0.3
-  gamma: 0.1
-  S0: 999
-  I0: 1
-  R0: 0
+  beta:
+    module: fixed
+    value: 0.3
+  gamma:
+    module: fixed
+    value: 0.1
+  s0:
+    module: fixed
+    value: 999
+  i0:
+    module: fixed
+    value: 1
+  r0:
+    module: fixed
+    value: 0
 ```
 
 This defines the configuration for a handwritten SIR model. It has the following important sections:
