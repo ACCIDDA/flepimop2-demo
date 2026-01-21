@@ -1,10 +1,10 @@
 # `flepimop2` Demo
 
-Contained in this repository is a demonstration guiding new users through the capabilities of `flepimop2` starting from a basic SIR model and building up from there.
+Contained in this repository is a demonstration guiding new users through the capabilities of `flepimop2` starting from a basic SIR model and building up from there. In addition to a handwritten solver example, this demo also includes an example using the `op_engine` integration for running simulations through the `flepimop2` engine interface.
 
 ## Installation
 
-To create a conda virtual environment containing `flepimop2` and the other dependencies you can run the following recipe which will create a conda environment locally at `./venv/`. This will generate the conda environment from `environment.yaml`.
+To create a conda virtual environment containing `flepimop2`, `op_engine`, and the other dependencies you can run the following recipe which will create a conda environment locally at `./venv/`. This will generate the conda environment from `environment.yaml`.
 
 ```bash
 $ just venv
@@ -13,18 +13,20 @@ $ conda activate ./venv
 
 ### Development Installation
 
-For users that wish to change from where `flepimop2` is installed from they can create a `environment.user.yaml` file with their modifications:.
+For users that wish to change from where `flepimop2` or `op_engine` are installed from they can create an `environment.user.yaml` file with their modifications:
 
 ```yaml
 dependencies:
   - pip:
       - 'git+file:///path/to/flepimop2'
+      - 'git+file:///path/to/op_engine'
 ```
 
-Then when running `just venv` this file will be used to override the `environment.yaml` when generating the conda environment. Alternatively, to override the installation of `flepimop2` when actively working inside the conda environment users can run the following:
+Then when running `just venv` this file will be used to override the `environment.yaml` when generating the conda environment. Alternatively, to override the installation of either package when actively working inside the conda environment users can run the following:
 
 ```bash
 pip install --force-reinstall file:///path/to/flepimop2
+pip install --force-reinstall file:///path/to/op_engine
 ```
 
 This allows for incremental updates without recreating or updating the conda environment as a whole. Similar steps apply to other dependencies as well.
@@ -33,10 +35,10 @@ This allows for incremental updates without recreating or updating the conda env
 
 ### Model Inputs
 
-To begin using `flepimop2` you'll need to create 3 files:
+To begin using `flepimop2` with a handwritten solver you'll need to create three files:
 
-1. A python file defining the SIR model in terms of $dY/dt$, which `flepimop2` calls a "system".
-2. A python file defining the ODE solver to be used, which `flepimop2` calls an "engine".
+1. A Python file defining the SIR model in terms of $dY/dt$, which `flepimop2` calls a "system".
+2. A Python file defining the ODE solver to be used, which `flepimop2` calls an "engine".
 3. A YAML file defining the configuration for the project.
 
 #### SIR Model
@@ -64,13 +66,13 @@ def stepper(
 
 This defines the SIR model in terms of an ODE. The function takes the following arguments:
 
-1. `t` which is the current time step, which is unused in this model but could be used to add time dependent effects.
-2. `y` which is the state array which defines the number of individuals in each compartment.
-3. `beta` and `gamma` which are additional parameter arguments that are provided by `flepimop2` from the configuration.
+1. `t` which is the current time step.
+2. `y` which is the state array defining the number of individuals in each compartment.
+3. `beta` and `gamma` which are additional parameter arguments provided by `flepimop2` from the configuration.
 
 #### ODE Solver
 
-To create an ODE solver you'll want to put the following code in a file called `model_input/plugins/solve_ivp.py`.
+To create a handwritten ODE solver you'll want to put the following code in a file called `model_input/plugins/solve_ivp.py`.
 
 ```python
 from typing import Any
@@ -103,8 +105,6 @@ def runner(
     result = solve_ivp(fun, (t0, tf), y0, t_eval=times, args=args, **solver_options)
     return np.transpose(np.vstack((result.t, result.y)))
 ```
-
-This defines an ODE solver that takes a generic `fun` stepper function and wraps `scipy.integrate.solve_ivp`. It also takes a `times` array defining the time steps to evaluate at, a `y0` initial state array, `params` are additional params to pass on to the stepper, and `solver_options` are solver specific options.
 
 #### Configuration File
 
@@ -148,72 +148,69 @@ parameter:
     value: 0
 ```
 
-This defines the configuration for a handwritten SIR model. It has the following important sections:
-
-1. `name` which defines a human readable name for the configuration file.
-2. `system` which defines the systems available. In this case we have a system that uses the `wrapper` module that loads the handwritten SIR stepper function from before.
-3. `engine` which defines the engines available. In this case we have an engine that uses the `wrapper` module that loads the handwritten `solve_ivp` ODE solver function from before.
-4. `simulate` which defines the available simulators, which are a combination of a system and an engine with settings. In this case we define to simulators, `demo` and `hires` which both use the same system and engine defined before but with different resolutions of time grids.
-5. `backend` which defines the backend to use. In this case the backend is a `csv` module which will save results using plain CSV files.
-6. `parameter` which defines the parameters used by the stepper and runner to run the simulator.
-
 ### Running Simulate
 
-Now you are able to run simulators with `flepimop2` using the CLI. The command to do so is:
+You can run the handwritten solver example with:
 
 ```bash
 flepimop2 simulate configs/SIR_script.yml
 ```
 
-This will run the `demo` simulator since it is the first simulator defined in the configuration file. You can specify which one to run by providing a `--target` option. After this command completes you should see a CSV file created in the `model_output/` directory.
+This will produce CSV output files in the `model_output/` directory.
 
-### Running Processing Steps
+## Using `op_engine` as the flepimop2 Engine
 
-#### Updating The Configuration
+This repository also includes an example configuration that uses the `op_engine` flepimop2-compatible engine adapter instead of a handwritten solver. This demonstrates how `flepimop2` can delegate time integration to `op_engine` while keeping the same system definition and workflow.
 
-Now you'll want to add the following section to your configuration file.
+### op_engine Configuration
 
-```yaml
-process:
-  demo:
-    module: shell
-    command: Rscript postprocessing/SIR_plot.R
-    args:
-      - configs/SIR_script.yml
-      - model_output/SIR_plot.png
-  hires:
-    module: shell
-    command: Rscript postprocessing/SIR_plot.R
-    args:
-      - configs/SIR_script.yml
-      - model_output/SIR_plot_hires.png
-  jupyter_render:
-    module: ipynbrender
-    file: postprocessing/SirPlot.ipynb
-    output: model_output/SirPlot.html
+The op_engine example configuration is provided in `configs/SIR_op_engine.yml`. It reuses the same SIR system definition but switches the engine to the built-in `op_engine` adapter.
+
+At a high level, the differences are:
+
+- The `engine` section references the `op_engine.flepimop2.engine` module.
+- Solver options are provided through the op_engine configuration schema.
+- No custom Python solver script is required.
+
+### Running the op_engine Example
+
+To run the SIR model using `op_engine` as the backend solver:
+
+```bash
+flepimop2 simulate configs/SIR_op_engine.yml
 ```
 
-This will define three processing steps that use two modules. `demo` and `hires` invoke a shell command with a set of user provided arguments and `jupyter_render` renders a jupyter notebook.
+This will again write CSV output files into `model_output/`, using the same backend configuration and naming conventions.
 
-#### Running a Shell Script
+## Postprocessing with Python
 
-You can invoke the plotting processing script via the following command.
+In addition to the existing R-based plotting example, this repository includes a Python-based postprocessing script for visualizing op_engine simulation results. This provides a lightweight, fully Python-native workflow using `pandas` and `matplotlib`.
+
+You can run the Python plotting step via the process CLI target defined in the op_engine configuration file:
+
+```bash
+flepimop2 process --target plot_py configs/SIR_op_engine.yml
+```
+
+This will generate a PNG plot in the `model_output/` directory showing the SIR trajectories.
+
+## Running Processing Steps (R and Jupyter)
+
+The original R and Jupyter-based postprocessing examples remain unchanged and can still be used with the handwritten solver configuration.
+
+### Running a Shell Script
 
 ```bash
 flepimop2 process configs/SIR_script.yml
 ```
 
-This will produce a png plot file in the `model_output/` directory.
-
-#### Running a Jupyter Notebook
-
-The `jupyter_render` process target uses a process module not directly provided by `flepimop2`, it is provided by [`flepimop2-ipynbrender`](https://github.com/ACCIDDA/flepimop2-ipynbrender) which is an external package. This external package provides additional debugging features available via the `--dry-run` and `--verbose` flags. To see the additional debug information you can run the following command.
+### Running a Jupyter Notebook
 
 ```bash
 flepimop2 process --target jupyter_render --dry-run -vvv configs/SIR_script.yml
 ```
 
-Once you are satisfied with the output you can invoke the command with the debug flags to actually run it.
+Once verified:
 
 ```bash
 flepimop2 process --target jupyter_render configs/SIR_script.yml

@@ -9,10 +9,13 @@ dependencies:
   - pip:
       - 'git+https://git@github.com/ACCIDDA/flepimop2.git@main'
       - 'git+https://git@github.com/ACCIDDA/flepimop2-ipynbrender.git@main'
+      - 'git+https://github.com/ACCIDDA/op_engine.git@main#egg=op_engine[flepimop2]'
   - 'yamllint'
   - 'ruff'
   - 'scipy'
   - 'plotnine'
+  - 'matplotlib'
+  - 'pandas'
   - 'r-base>=4.3'
   - 'pyarrow==18.0.0'
   - 'r-arrow==18.0.0'
