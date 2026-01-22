@@ -6,7 +6,7 @@ system:
     script: model_input/plugins/SIR.py
 
 engine:
-  - module: op_engine.flepimop2.engine
+  - module: op_engine
     config:
       method: heun
       adaptive: false
