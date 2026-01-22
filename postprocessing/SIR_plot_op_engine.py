@@ -1,5 +1,5 @@
 # postprocessing/SIR_plot_op_engine.py
-"""OP Engine SIR plot generator."""
+"""OP Engine SIR plot generator using flepimop2's public configuration API."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import yaml
+from flepimop2.configuration import ConfigurationModel
 
 MIN_SIR_COLUMNS = 4
 ARG_LEN = 2
@@ -22,6 +22,45 @@ def _latest_csv(results_dir: Path) -> Path:
     return csvs[-1]
 
 
+def _resolve_results_dir(config_model: ConfigurationModel) -> Path:
+    """Resolve the CSV backend output directory using flepimop2's ConfigurationModel.
+
+    This mirrors the CLI's default behavior:
+    - Use the first simulate target by insertion order.
+    - Use that target's backend name (defaulting to "default" if absent).
+    - Read the backend config and use its root (defaulting to "model_output").
+
+    Args:
+        config_model: The validated configuration model.
+
+    Raises:
+        ValueError: If the simulate block is empty.
+        KeyError: If the backend name is not found in the backends block.
+
+    Returns:
+        Path to the results directory.
+
+    """
+    simulate_block = config_model.simulate
+    if not simulate_block:
+        msg = "config.simulate must be non-empty"
+        raise ValueError(msg)
+
+    # CLI default behavior: first simulate target by insertion order.
+    first_sim = next(iter(simulate_block.values()))
+
+    backend_name = getattr(first_sim, "backend", None) or "default"
+    try:
+        backend_model = config_model.backends[backend_name]
+    except KeyError as exc:
+        msg = f"simulate backend {backend_name!r} not found in config.backends"
+        raise KeyError(msg) from exc
+
+    backend_cfg = backend_model.model_dump()
+    root = backend_cfg.get("root", "model_output")
+    return Path(root)
+
+
 def main() -> None:
     """Generate SIR plot from op_engine simulation results."""
     args = sys.argv[1:]
@@ -32,28 +71,12 @@ def main() -> None:
     cfg_path = Path(args[0])
     out_path = Path(args[1])
 
-    with cfg_path.open("r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    # Use flepimop2's config API (validated/typed) instead of manual YAML parsing.
+    config_model = ConfigurationModel.from_yaml(cfg_path)
 
-    backend_cfg = config.get("backend", [])
-    if isinstance(backend_cfg, list):
-        # Normalize list-form backend to a named mapping like the R script does.
-        backend_cfg = {"default": backend_cfg[0]} if backend_cfg else {"default": {}}
-
-    simulate_cfg = config.get("simulate", {})
-    # Use the first simulate target by insertion order (matches CLI default behavior).
-    if not isinstance(simulate_cfg, dict) or not simulate_cfg:
-        msg = "config.simulate must be a non-empty mapping"
-        raise ValueError(msg)
-
-    first_sim_name = next(iter(simulate_cfg))
-    first_sim = simulate_cfg[first_sim_name]
-    backend_name = first_sim.get("backend", "default")
-
-    backend = backend_cfg.get(backend_name, {})
-    results_path = Path(backend.get("root", "model_output"))
-
+    results_path = _resolve_results_dir(config_model)
     latest = _latest_csv(results_path)
+
     df = pd.read_csv(latest, header=None)
 
     # Expect (T, 1 + n_state) => time + SIR columns

@@ -3,18 +3,8 @@ default: yamllint air ruff
 [doc('Generate environment file')]
 env:
 	#!/usr/bin/env bash
-	if [ -f environment.user.yaml ]; then 
-		yq -n '
-			load("environment.yaml") as $base | 
-			load("environment.user.yaml") as $user | 
-			$base | 
-			.dependencies = (($base.dependencies | map(select(has("pip") | not))) +
-			[((($user.dependencies // []) + ($base.dependencies // [])) |
-			map(select(has("pip"))) | .[0])])
-		' > .environment.yaml;
-	else 
-		cp environment.yaml .environment.yaml; 
-	fi
+	set -euo pipefail
+	python scripts/merge_env.py
 
 [doc('Create a virtual environment using conda')]
 venv: env
@@ -57,3 +47,6 @@ ci-ruff:
 [group('ci')]
 [doc('Run all continuous integration checks')]
 ci: yamllint ci-air ci-ruff
+
+
+
