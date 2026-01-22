@@ -9,7 +9,7 @@ dependencies:
   - pip:
       - 'git+https://git@github.com/ACCIDDA/flepimop2.git@main'
       - 'git+https://git@github.com/ACCIDDA/flepimop2-ipynbrender.git@main'
-      - 'git+https://github.com/ACCIDDA/op_engine.git@main#egg=op_engine[flepimop2]'
+      - 'op_engine @ git+https://github.com/ACCIDDA/op_engine.git@add_flepi_module'
   - 'yamllint'
   - 'ruff'
   - 'scipy'

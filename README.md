@@ -189,7 +189,7 @@ In addition to the existing R-based plotting example, this repository includes a
 You can run the Python plotting step via the process CLI target defined in the op_engine configuration file:
 
 ```bash
-flepimop2 process --target plot_py configs/SIR_op_engine.yml
+flepimop2 process configs/SIR_op_engine.yml
 ```
 
 This will generate a PNG plot in the `model_output/` directory showing the SIR trajectories.
