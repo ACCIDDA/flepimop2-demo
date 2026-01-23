@@ -1,32 +1,87 @@
+"""Merge conda environment YAML files with user pip overrides.
+
+This script generates `.environment.yaml` from:
+
+- `environment.yaml` (base)
+- `environment.user.yaml` (optional user overlay)
+
+Policy:
+- `environment.user.yaml` may only contribute pip requirements.
+- pip requirements are merged such that user entries override base entries when
+  they resolve to the same distribution name.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+
+_YAML_IMPORT_ERROR_MSG = (
+    "ERROR: PyYAML is required to merge environment files.\n"
+    "Install it with one of:\n"
+    "  pip install pyyaml\n"
+    "  conda install -c conda-forge pyyaml\n"
+)
+
+_DEPS_NOT_LIST_MSG = "ERROR: dependencies must be a YAML list."
+_PIP_DEPS_NOT_LIST_MSG = "ERROR: dependencies.pip must be a YAML list."
+_USER_NONPIP_MSG_PREFIX = (
+    "ERROR: environment.user.yaml should only contain pip overrides.\n"
+    "Found non-pip dependencies: "
+)
+
 
 try:
-    import yaml  # type: ignore
-except Exception as e:
-    raise SystemExit(
-        "ERROR: PyYAML is required to merge environment files.\n"
-        "Install it with one of:\n"
-        "  pip install pyyaml\n"
-        "  conda install -c conda-forge pyyaml\n"
-    ) from e
+    import yaml  # type: ignore[import-not-found]
+except Exception as exc:  # pragma: no cover
+    raise SystemExit(_YAML_IMPORT_ERROR_MSG) from exc
 
 
-def load_yaml(path: Path) -> dict:
-    data = yaml.safe_load(path.read_text())
+def load_yaml(path: Path) -> dict[str, Any]:
+    """Load a YAML file that must be a mapping at the top level.
+
+    Args:
+        path: Path to the YAML file.
+
+    Returns:
+        Parsed YAML as a dictionary. Empty mapping if file is empty.
+
+    Raises:
+        SystemExit: If the top-level YAML object is not a mapping.
+
+    """
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if data is None:
         return {}
     if not isinstance(data, dict):
-        raise SystemExit(f"ERROR: {path} must be a YAML mapping at the top level.")
+        msg = f"ERROR: {path} must be a YAML mapping at the top level."
+        raise SystemExit(msg)
     return data
 
 
 def split_deps(deps: object) -> tuple[list[object], list[str]]:
+    """Split conda dependencies into non-pip entries and pip requirements.
+
+    The conda environment `dependencies` field is a list with mixed entries:
+    - strings (conda packages)
+    - dicts like {"pip": [...]} (pip requirements)
+
+    Args:
+        deps: The raw `dependencies` value from YAML.
+
+    Returns:
+        (nonpip, pip_list) where:
+          - nonpip contains all non-pip dependency entries
+          - pip_list is the flattened list of pip requirement strings
+
+    Raises:
+        SystemExit: If the YAML structure is not as expected.
+
+    """
     if deps is None:
         return [], []
     if not isinstance(deps, list):
-        raise SystemExit("ERROR: dependencies must be a YAML list.")
+        raise SystemExit(_DEPS_NOT_LIST_MSG)
 
     nonpip: list[object] = []
     pip_list: list[str] = []
@@ -35,7 +90,7 @@ def split_deps(deps: object) -> tuple[list[object], list[str]]:
         if isinstance(item, dict) and "pip" in item:
             pip_val = item.get("pip") or []
             if not isinstance(pip_val, list):
-                raise SystemExit("ERROR: dependencies.pip must be a YAML list.")
+                raise SystemExit(_PIP_DEPS_NOT_LIST_MSG)
             pip_list.extend([str(x) for x in pip_val])
         else:
             nonpip.append(item)
@@ -44,19 +99,34 @@ def split_deps(deps: object) -> tuple[list[object], list[str]]:
 
 
 def _normalize_name(name: str) -> str:
-    # PEP 503 normalization-ish: treat hyphen/underscore as equivalent.
+    """Normalize a distribution name for comparison.
+
+    This is PEP 503-style normalization-ish:
+    - lowercase
+    - treat '-' and '_' as equivalent
+
+    Args:
+        name: Raw distribution name.
+
+    Returns:
+        Normalized name.
+
+    """
     return name.strip().lower().replace("-", "_")
 
 
 def dist_name(req: str) -> str | None:
-    """
-    Best-effort extraction of distribution name from a pip requirement string.
+    """Extract distribution name from a pip requirement string (best-effort).
 
-    Supports:
-      - 'name @ git+https://...'
-      - 'name==1.2', 'name>=1', 'name[extra]>=1'
-      - 'name' (bare)
-    Returns None for unnamed VCS URLs like 'git+https://...'.
+    Supported patterns:
+      - "name @ git+https://..."
+      - "name==1.2", "name>=1", "name[extra]>=1"
+      - "name" (bare)
+
+    Returns:
+        Normalized distribution name, or None if it cannot be determined
+        (e.g., unnamed VCS URL like "git+https://...").
+
     """
     s = req.strip()
 
@@ -65,7 +135,6 @@ def dist_name(req: str) -> str | None:
         left, _right = s.split("@", 1)
         left = left.strip()
         if left and "://" not in left and not left.startswith("git+"):
-            # strip extras: name[extra]
             name = left.split("[", 1)[0].strip()
             if name:
                 return _normalize_name(name)
@@ -75,7 +144,6 @@ def dist_name(req: str) -> str | None:
         return None
 
     # Requirement with version specifiers (take the head)
-    # e.g. "foo>=1", "foo == 1", "foo[bar]~=2"
     seps = ["==", ">=", "<=", "~=", "!=", ">", "<", " "]
     head = s
     for sep in seps:
@@ -83,7 +151,6 @@ def dist_name(req: str) -> str | None:
             head = s.split(sep, 1)[0].strip()
             break
 
-    # Strip extras: foo[extra]
     name = head.split("[", 1)[0].strip()
     if not name or "://" in name:
         return None
@@ -91,48 +158,56 @@ def dist_name(req: str) -> str | None:
 
 
 def merge_pip(base: list[str], user: list[str]) -> list[str]:
-    """
-    Merge pip requirement lists where user entries override base entries
-    when they resolve to the same distribution name.
+    """Merge pip requirements with user override precedence.
+
+    User entries override base entries when both resolve to the same
+    distribution name. Unnamed VCS URLs are appended and not deduplicated.
+
+    Args:
+        base: Base pip requirement strings.
+        user: User pip requirement strings.
+
+    Returns:
+        Merged pip requirements list.
+
     """
     out: list[str] = []
     idx: dict[str, int] = {}
 
-    # Add base first, recording positions for named requirements.
-    for r in base:
-        name = dist_name(r)
+    for req in base:
+        name = dist_name(req)
         if name is None:
-            out.append(r)
+            out.append(req)
             continue
         idx[name] = len(out)
-        out.append(r)
+        out.append(req)
 
-    # Apply user overrides (replace if same name, else append).
-    for r in user:
-        name = dist_name(r)
+    for req in user:
+        name = dist_name(req)
         if name is None:
-            out.append(r)
+            out.append(req)
             continue
         if name in idx:
-            out[idx[name]] = r
+            out[idx[name]] = req
         else:
             idx[name] = len(out)
-            out.append(r)
+            out.append(req)
 
     return out
 
 
 def main() -> None:
+    """Entry point for merging environment.yaml and environment.user.yaml."""
     base_path = Path("environment.yaml")
     user_path = Path("environment.user.yaml")
     out_path = Path(".environment.yaml")
 
     base = load_yaml(base_path)
 
-    # If there is no user override file, just copy base through.
     if not user_path.exists():
         out_path.write_text(
-            yaml.safe_dump(base, sort_keys=False, default_flow_style=False)
+            yaml.safe_dump(base, sort_keys=False, default_flow_style=False),
+            encoding="utf-8",
         )
         return
 
@@ -141,12 +216,9 @@ def main() -> None:
     base_nonpip, base_pip = split_deps(base.get("dependencies"))
     user_nonpip, user_pip = split_deps(user.get("dependencies"))
 
-    # Policy: user file is an overlay for pip only.
     if user_nonpip:
-        raise SystemExit(
-            "ERROR: environment.user.yaml should only contain pip overrides.\n"
-            f"Found non-pip dependencies: {user_nonpip!r}"
-        )
+        msg = f"{_USER_NONPIP_MSG_PREFIX}{user_nonpip!r}"
+        raise SystemExit(msg)
 
     merged_pip = merge_pip(base_pip, user_pip)
 
@@ -155,7 +227,10 @@ def main() -> None:
         deps_out.append({"pip": merged_pip})
 
     base["dependencies"] = deps_out
-    out_path.write_text(yaml.safe_dump(base, sort_keys=False, default_flow_style=False))
+    out_path.write_text(
+        yaml.safe_dump(base, sort_keys=False, default_flow_style=False),
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
