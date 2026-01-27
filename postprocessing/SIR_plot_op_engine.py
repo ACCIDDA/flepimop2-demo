@@ -55,9 +55,7 @@ def _resolve_results_dir(config_model: ConfigurationModel) -> Path:
         msg = f"simulate backend {backend_name!r} not found in config.backends"
         raise KeyError(msg) from exc
 
-    backend_cfg = backend_model.model_dump()
-    root = backend_cfg.get("root", "model_output")
-    return Path(root)
+    return backend_model.root
 
 
 def main() -> None:
