@@ -50,9 +50,8 @@ def _resolve_results_dir(config_model: ConfigurationModel) -> Path:
     first_sim = next(iter(simulate_block.values()))
 
     backend_name = getattr(first_sim, "backend", None) or "default"
-    try:
-        backend_model = config_model.backends[backend_name]
-    except KeyError as exc:
+    backend_model = config_models.backends.get(backend_name)
+    if backend_model is None:
         msg = f"simulate backend {backend_name!r} not found in config.backends"
         raise KeyError(msg) from exc
 
