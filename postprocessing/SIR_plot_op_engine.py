@@ -50,12 +50,29 @@ def _resolve_results_dir(config_model: ConfigurationModel) -> Path:
     first_sim = next(iter(simulate_block.values()))
 
     backend_name = getattr(first_sim, "backend", None) or "default"
-    backend_model = config_models.backends.get(backend_name)
+
+    # NOTE: Backends are stored as ModuleModel instances in the config model, and may
+    # not expose backend-specific fields (e.g., CsvBackend.root) directly. We therefore
+    # resolve the root path from the serialized config with a sensible default.
+    # See issue: Backend outputs cannot be discovered programmatically without RunMeta.
+    backend_model = config_model.backends.get(backend_name)
     if backend_model is None:
         msg = f"simulate backend {backend_name!r} not found in config.backends"
-        raise KeyError(msg) from exc
+        raise KeyError(msg)
 
-    return backend_model.root
+    backend_cfg = backend_model.model_dump()
+
+    # Prefer an explicit root if present; otherwise fall back to the default.
+    # Some schema variants may nest backend-specific options.
+    root = (
+        backend_cfg.get("root")
+        or backend_cfg.get("config", {}).get("root")
+        or backend_cfg.get("params", {}).get("root")
+        or backend_cfg.get("settings", {}).get("root")
+        or "model_output"
+    )
+
+    return Path(root)
 
 
 def main() -> None:
