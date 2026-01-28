@@ -57,4 +57,3 @@ ci-ruff:
 [group('ci')]
 [doc('Run all continuous integration checks')]
 ci: yamllint ci-air ci-ruff
-
