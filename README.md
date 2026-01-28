@@ -34,13 +34,14 @@ Some postprocessing examples in this repository use R-based scripts.
 
 This repository uses [`air`](https://posit-dev.github.io/air/) to format and lint R code (e.g., in `postprocessing/`). **Unlike the other linting tools used by this repo, `air` cannot be managed via `conda`** because it is **not an R package** (i.e., it is not installed with `install.packages()`); it is a standalone command-line tool.
 
-See the `air` CLI documentation:\https://posit-dev.github.io/air/cli.html
+See the `air` CLI documentation:  
+https://posit-dev.github.io/air/cli.html
 
 ### Installing `air`
 
 #### macOS (Homebrew)
 
-``` bash
+```bash
 brew install r-air
 ```
 
@@ -52,7 +53,7 @@ https://github.com/posit-dev/air/releases
 
 ### Verify installation
 
-``` bash
+```bash
 air --version
 ```
 ------------------------------------------------------------------------
@@ -218,6 +219,15 @@ parameter:
     module: fixed
     value: 0
 ```
+
+This defines the configuration for a handwritten SIR model. It has the following important sections:
+
+1. `name` which defines a human readable name for the configuration file.
+2. `system` which defines the systems available. In this case we have a system that uses the `wrapper` module that loads the handwritten SIR stepper function from before.
+3. `engine` which defines the engines available. In this case we have an engine that uses the `wrapper` module that loads the handwritten `solve_ivp` ODE solver function from before.
+4. `simulate` which defines the available simulators, which are a combination of a system and an engine with settings. In this case we define two simulators, `demo` and `hires` which both use the same system and engine defined before but with different resolutions of time grids.
+5. `backend` which defines the backend to use. In this case the backend is a `csv` module which will save results using plain CSV files.
+6. `parameter` which defines the parameters used by the stepper and runner to run the simulator.
 
 ------------------------------------------------------------------------
 
