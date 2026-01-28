@@ -15,8 +15,7 @@ The goal is to illustrate:
 
 ## Installation
 
-To create a conda environment containing `flepimop2`, `op_engine`, the
-`flepimop2-op-engine` adapter, and all demo dependencies, run:
+To create a conda environment containing `flepimop2`, `op_engine`, the `flepimop2-op-engine` adapter, and all demo dependencies, run:
 
 ```bash
 just venv
@@ -33,14 +32,9 @@ Some postprocessing examples in this repository use R-based scripts.
 
 ### `air` (R formatter/linter) is a separate tool
 
-This repository uses [`air`](https://posit-dev.github.io/air/) to format
-and lint R code (e.g., in `postprocessing/`). **Unlike the other linting
-tools used by this repo, `air` cannot be managed via `conda`** because
-it is **not an R package** (i.e., it is not installed with
-`install.packages()`); it is a standalone command-line tool.
+This repository uses [`air`](https://posit-dev.github.io/air/) to format and lint R code (e.g., in `postprocessing/`). **Unlike the other linting tools used by this repo, `air` cannot be managed via `conda`** because it is **not an R package** (i.e., it is not installed with `install.packages()`); it is a standalone command-line tool.
 
-See the `air` CLI documentation:\
-https://posit-dev.github.io/air/cli.html
+See the `air` CLI documentation:\https://posit-dev.github.io/air/cli.html
 
 ### Installing `air`
 
@@ -52,8 +46,7 @@ brew install r-air
 
 #### Other platforms
 
-Install `air` from the official release artifacts and ensure the `air`
-binary is available on your `PATH`:
+Install `air` from the official release artifacts and ensure the `air` binary is available on your `PATH`:
 
 https://github.com/posit-dev/air/releases
 
@@ -66,8 +59,7 @@ air --version
 
 ## Development Installation Overrides
 
-When working on development branches or local forks, dependencies can be
-overridden using an `environment.user.yaml` file:
+When working on development branches or local forks, dependencies can be overridden using an `environment.user.yaml` file:
 
 ```yaml
 dependencies:
@@ -99,10 +91,7 @@ This allows incremental iteration without recreating the full environment.
 
 ## Handwritten SIR Model and Solver
 
-This section demonstrates using `flepimop2` with fully user-defined
-components. The goal is to show how systems, solvers, and configuration
-are composed into a working simulation pipeline without relying on
-built-in modeling assumptions.
+This section demonstrates using `flepimop2` with fully user-defined components. The goal is to show how systems, solvers, and configuration are composed into a working simulation pipeline without relying on built-in modeling assumptions.
 
 To begin using `flepimop2`, you will need three inputs:
 
@@ -135,8 +124,7 @@ def stepper(
     return np.array(dydt, dtype=float)
 ```
 
-This function defines the SIR model as a system of ordinary differential
-equations. The arguments are:
+This function defines the SIR model as a system of ordinary differential equations. The arguments are:
 
 1. `t` — the current simulation time (unused here, but available for time-dependent effects)
 2. `y` — the state vector containing compartment values
@@ -180,8 +168,7 @@ def runner(
     return np.transpose(np.vstack((result.t, result.y)))
 ```
 
-This defines an ODE solver that takes a generic `fun` stepper function and
-wraps `scipy.integrate.solve_ivp`. It also takes:
+This defines an ODE solver that takes a generic `fun` stepper function and wraps `scipy.integrate.solve_ivp`. It also takes:
 
 - `times`: an array defining time points to evaluate the solution
 - `y0`: the initial state vector
@@ -240,9 +227,7 @@ parameter:
 flepimop2 simulate configs/SIR_script.yml
 ```
 
-This will run the `demo` simulator since it is the first simulator defined
-in the configuration file. You can specify a different simulator using the
-`--target` option.
+This will run the `demo` simulator since it is the first simulator defined in the configuration file. You can specify a different simulator using the `--target` option.
 
 After completion, a CSV file will be created in `model_output/`.
 
@@ -250,9 +235,7 @@ After completion, a CSV file will be created in `model_output/`.
 
 ## Adding Postprocessing Pipelines
 
-`flepimop2` supports postprocessing pipelines through its `process`
-command, allowing both R- and Python-based workflows to be orchestrated
-from configuration.
+`flepimop2` supports postprocessing pipelines through its `process` command, allowing both R- and Python-based workflows to be orchestrated from configuration.
 
 Add:
 
@@ -302,11 +285,9 @@ flepimop2 process --target jupyter_render --dry-run -vvv configs/SIR_script.yml
 
 ## Using `op_engine` as the Solver Backend
 
-The `op_engine` integration demonstrates how solver backends can be
-swapped without modifying the model definition.
+The `op_engine` integration demonstrates how solver backends can be swapped without modifying the model definition.
 
-Rather than redefining the SIR system, the op_engine configuration only
-changes the engine block and adds a Python-based postprocessing step.
+Rather than redefining the SIR system, the op_engine configuration only changes the engine block and adds a Python-based postprocessing step.
 
 ### Engine Change
 
