@@ -1,21 +1,15 @@
 # `flepimop2` Demo
 
-This repository contains a demonstration project designed to introduce
-users to the `flepimop2` simulation framework. The demo starts from a
-fully handwritten SIR model and solver, then progresses to using the
-`op_engine` integration to run simulations through the same `flepimop2`
-engine interface.
+This repository contains a demonstration project designed to introduce users to the `flepimop2` simulation framework. The demo starts from a fully handwritten SIR model and solver, then progresses to using the `op_engine` integration to run simulations through the same `flepimop2` engine interface.
 
 The goal is to illustrate:
 
--   How to define systems and solvers manually
--   How to configure and run simulations
--   How to add postprocessing steps
--   How to swap solver backends (handwritten → `op_engine`) without
-    changing the model definition
--   How `flepimop2` composes simulation pipelines from modular
-    components
--   How heterogeneous postprocessing workflows (R + Python) can coexist
+- How to define systems and solvers manually
+- How to configure and run simulations
+- How to add postprocessing steps
+- How to swap solver backends (handwritten -> `op_engine`) without changing the model definition
+- How `flepimop2` composes simulation pipelines from modular components
+- How heterogeneous postprocessing workflows (R + Python) can coexist
 
 ------------------------------------------------------------------------
 
@@ -24,59 +18,50 @@ The goal is to illustrate:
 To create a conda environment containing `flepimop2`, `op_engine`, the
 `flepimop2-op-engine` adapter, and all demo dependencies, run:
 
-``` bash
+```bash
 just venv
 conda activate ./venv
 ```
 
-This creates a local environment under `./venv/` using
-`environment.yaml`.
+This creates a local environment under `./venv/` using `environment.yaml`.
 
 ------------------------------------------------------------------------
 
 ## R Dependencies (Postprocessing)
 
-Some postprocessing examples in this repository use R-based plotting
-scripts.
+Some postprocessing examples in this repository use R-based scripts.
 
-### Installing R
+### `air` (R formatter/linter) is a separate tool
 
-#### macOS
+This repository uses [`air`](https://posit-dev.github.io/air/) to format
+and lint R code (e.g., in `postprocessing/`). **Unlike the other linting
+tools used by this repo, `air` cannot be managed via `conda`** because
+it is **not an R package** (i.e., it is not installed with
+`install.packages()`); it is a standalone command-line tool.
 
-``` bash
-brew install r
-```
+See the `air` CLI documentation:\
+https://posit-dev.github.io/air/cli.html
 
-#### Linux (Debian/Ubuntu)
+### Installing `air`
 
-``` bash
-sudo apt install r-base
-```
-
-#### Linux (Fedora)
+#### macOS (Homebrew)
 
 ``` bash
-sudo dnf install R
+brew install r-air
 ```
 
-#### Windows
+#### Other platforms
 
-Download R from:
+Install `air` from the official release artifacts and ensure the `air`
+binary is available on your `PATH`:
 
-https://cran.r-project.org
+https://github.com/posit-dev/air/releases
 
-------------------------------------------------------------------------
+### Verify installation
 
-### Installing Required R Packages
-
-After installing R:
-
-``` r
-install.packages(c("air", "data.table", "ggplot2", "yaml"))
+``` bash
+air --version
 ```
-
-These packages are used by the example R plotting and scripts and R script formatting checks.
-
 ------------------------------------------------------------------------
 
 ## Development Installation Overrides
@@ -84,7 +69,7 @@ These packages are used by the example R plotting and scripts and R script forma
 When working on development branches or local forks, dependencies can be
 overridden using an `environment.user.yaml` file:
 
-``` yaml
+```yaml
 dependencies:
   - pip:
       - 'git+file:///path/to/flepimop2'
@@ -94,23 +79,21 @@ dependencies:
 
 When running:
 
-``` bash
+```bash
 just venv
 ```
 
 this file will be merged with `environment.yaml`.
 
-Alternatively, individual packages can be reinstalled inside the
-environment:
+Alternatively, individual packages can be reinstalled inside the environment:
 
-``` bash
+```bash
 pip install --force-reinstall file:///path/to/flepimop2
 pip install --force-reinstall file:///path/to/op_engine
 pip install --force-reinstall file:///path/to/op_engine#subdirectory=flepimop2-op_engine
 ```
 
-This allows incremental iteration without recreating the full
-environment.
+This allows incremental iteration without recreating the full environment.
 
 ------------------------------------------------------------------------
 
@@ -121,20 +104,19 @@ components. The goal is to show how systems, solvers, and configuration
 are composed into a working simulation pipeline without relying on
 built-in modeling assumptions.
 
+To begin using `flepimop2`, you will need three inputs:
+
+1. A Python file defining the SIR model in terms of dY/dt, called a **system**
+2. A Python file defining the ODE solver, called an **engine**
+3. A YAML configuration file wiring everything together
+
 ------------------------------------------------------------------------
 
 ## SIR System Definition
 
-To begin using `flepimop2`, you will need three inputs:
-
-1.  A Python file defining the SIR model in terms of dY/dt, called a
-    **system**\
-2.  A Python file defining the ODE solver, called an **engine**\
-3.  A YAML configuration file wiring everything together
-
 Create `model_input/plugins/SIR.py`:
 
-``` python
+```python
 import numpy as np
 from numpy.typing import NDArray
 
@@ -153,13 +135,20 @@ def stepper(
     return np.array(dydt, dtype=float)
 ```
 
+This function defines the SIR model as a system of ordinary differential
+equations. The arguments are:
+
+1. `t` — the current simulation time (unused here, but available for time-dependent effects)
+2. `y` — the state vector containing compartment values
+3. `beta` and `gamma` — model parameters provided by `flepimop2` from the configuration file
+
 ------------------------------------------------------------------------
 
 ## ODE Solver Definition
 
 Create `model_input/plugins/solve_ivp.py`:
 
-``` python
+```python
 from typing import Any
 
 import numpy as np
@@ -191,13 +180,21 @@ def runner(
     return np.transpose(np.vstack((result.t, result.y)))
 ```
 
+This defines an ODE solver that takes a generic `fun` stepper function and
+wraps `scipy.integrate.solve_ivp`. It also takes:
+
+- `times`: an array defining time points to evaluate the solution
+- `y0`: the initial state vector
+- `params`: additional parameters passed to the stepper
+- `solver_options`: solver-specific keyword arguments forwarded to SciPy
+
 ------------------------------------------------------------------------
 
 ## Configuration File
 
 Create `configs/SIR_script.yml`:
 
-``` yaml
+```yaml
 name: SIR_handwritten_model
 
 system:
@@ -239,9 +236,13 @@ parameter:
 
 ## Running the Handwritten Simulation
 
-``` bash
+```bash
 flepimop2 simulate configs/SIR_script.yml
 ```
+
+This will run the `demo` simulator since it is the first simulator defined
+in the configuration file. You can specify a different simulator using the
+`--target` option.
 
 After completion, a CSV file will be created in `model_output/`.
 
@@ -255,7 +256,7 @@ from configuration.
 
 Add:
 
-``` yaml
+```yaml
 process:
   demo:
     module: shell
@@ -281,19 +282,19 @@ process:
 
 Plot results:
 
-``` bash
+```bash
 flepimop2 process configs/SIR_script.yml
 ```
 
 Render notebook:
 
-``` bash
+```bash
 flepimop2 process --target jupyter_render configs/SIR_script.yml
 ```
 
 Debug:
 
-``` bash
+```bash
 flepimop2 process --target jupyter_render --dry-run -vvv configs/SIR_script.yml
 ```
 
@@ -311,7 +312,7 @@ changes the engine block and adds a Python-based postprocessing step.
 
 In `configs/SIR_op_engine.yml`, the engine definition becomes:
 
-``` yaml
+```yaml
 engine:
   - module: op_engine
     config:
@@ -328,7 +329,7 @@ engine:
 
 The op_engine configuration adds:
 
-``` yaml
+```yaml
 process:
   plot_demo:
     module: shell
@@ -344,24 +345,15 @@ process:
 
 Run simulation:
 
-``` bash
+```bash
 flepimop2 simulate configs/SIR_op_engine.yml
 ```
 
 Generate plots:
 
-``` bash
+```bash
 flepimop2 process configs/SIR_op_engine.yml
 ```
-
-------------------------------------------------------------------------
-
-## Design Note: Backend Output Discovery
-
-Backend outputs are currently discovered using filesystem inspection
-(for example selecting the most recent CSV file). This is a known
-limitation of the backend interface and is tracked for future
-improvement.
 
 ------------------------------------------------------------------------
 
@@ -369,10 +361,10 @@ improvement.
 
 This demo illustrates:
 
--   Building systems and solvers manually\
--   Running simulations through `flepimop2`'s CLI\
--   Adding postprocessing pipelines\
--   Swapping solver backends without changing the model\
--   Integrating third-party solvers such as `op_engine`\
--   Coordinating Python and R workflows\
--   Building composable, configuration-driven simulation pipelines
+- Building systems and solvers manually
+- Running simulations through `flepimop2`'s CLI
+- Adding postprocessing pipelines
+- Swapping solver backends without changing the model
+- Integrating third-party solvers such as `op_engine`
+- Coordinating Python and R workflows
+- Building composable, configuration-driven simulation pipelines
