@@ -37,10 +37,10 @@ engine:
 backend:
   classic_csv:
     module: csv
-    root: model_output/SIR_linear_chain/classic
+    root: model_output/
   linear_chain_csv:
     module: csv
-    root: model_output/SIR_linear_chain/linear_chain
+    root: model_output/
 
 simulate:
   classic:
