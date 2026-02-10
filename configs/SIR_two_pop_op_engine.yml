@@ -40,13 +40,13 @@ backend:
 process:
   run_demo:
     module: shell
-    command: ./venv/bin/python model_input/plugins/two_pop_sim.py
+    command: python model_input/plugins/two_pop_sim.py
     args:
       - configs/SIR_two_pop_op_engine.yml
       - demo
   plot_demo:
     module: shell
-    command: ./venv/bin/python postprocessing/SIR_two_pop_plot_op_engine.py
+    command: python postprocessing/SIR_two_pop_plot_op_engine.py
     args:
       - configs/SIR_two_pop_op_engine.yml
       - model_output/SIR_two_pop_demo.png
