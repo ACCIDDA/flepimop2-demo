@@ -61,7 +61,7 @@ process:
     args:
       - postprocessing/SIR_linear_chain_compare_op_engine.py
       - configs/SIR_linear_chain_compare_op_engine.yml
-      - model_output/SIR_linear_chain/compare.png
+      - model_output/compare.png
 
 parameter:
   beta:
