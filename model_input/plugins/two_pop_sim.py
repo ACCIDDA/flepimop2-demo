@@ -14,6 +14,8 @@ from flepimop2.parameter.abc import build as build_parameter
 from flepimop2.system.abc import build as build_system
 
 USAGE = "python model_input/plugins/two_pop_sim.py <config.yml> [simulate_name]"
+MIN_ARGS = 1
+MAX_ARGS = 2
 
 
 def _initial_key(param_block: dict[str, object], state: str) -> str:
@@ -23,7 +25,8 @@ def _initial_key(param_block: dict[str, object], state: str) -> str:
         return k1
     if k2 in param_block:
         return k2
-    raise KeyError(f"Missing initial parameter for state {state!r} (tried {k1}, {k2})")
+    msg = f"Missing initial parameter for state {state!r} (tried {k1}, {k2})"
+    raise KeyError(msg)
 
 
 def _build_initials(
@@ -52,24 +55,27 @@ def _strip_initials(
 
 
 def main() -> None:
+    """Run a multi-state simulate target and persist its CSV via backend."""
     args = sys.argv[1:]
-    if not (1 <= len(args) <= 2):
+    if not (MIN_ARGS <= len(args) <= MAX_ARGS):
         raise SystemExit(USAGE)
 
     cfg_path = Path(args[0])
-    sim_name_override = args[1] if len(args) == 2 else None
+    sim_name_override = args[1] if len(args) == MAX_ARGS else None
 
     config_model = ConfigurationModel.from_yaml(cfg_path)
     simulate_block = config_model.simulate
     if not simulate_block:
-        raise ValueError("config.simulate must be non-empty")
+        msg = "config.simulate must be non-empty"
+        raise ValueError(msg)
 
     if sim_name_override is None:
         sim_name, simulate_cfg = next(iter(simulate_block.items()))
     else:
         simulate_cfg = simulate_block.get(sim_name_override)
         if simulate_cfg is None:
-            raise KeyError(f"simulate target {sim_name_override!r} not found")
+            msg = f"simulate target {sim_name_override!r} not found"
+            raise KeyError(msg)
         sim_name = sim_name_override
 
     system_cfg = config_model.systems[simulate_cfg.system].model_dump()
@@ -86,7 +92,8 @@ def main() -> None:
 
     result = engine.run(system, simulate_cfg.t_eval, y0, params)
     backend.save(result, RunMeta(name=sim_name))
-    print(f"Saved simulation '{sim_name}' with {len(state_names)} states")
+    msg = f"Saved simulation '{sim_name}' with {len(state_names)} states"
+    sys.stdout.write(msg + "\n")
 
 
 if __name__ == "__main__":

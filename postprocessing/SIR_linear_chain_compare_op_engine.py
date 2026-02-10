@@ -17,12 +17,16 @@ import pandas as pd
 from flepimop2.configuration import ConfigurationModel
 
 ARG_LEN = 2
+MIN_CLASSIC_COLS = 4
+MIN_LINEAR_COLS = 6
+MIN_SIMULATE_TARGETS = 2
 
 
 def _latest_csv(results_dir: Path) -> Path:
     csvs = sorted(results_dir.glob("*.csv"), key=lambda p: p.stat().st_mtime)
     if not csvs:
-        raise FileNotFoundError(f"No CSV files found in {results_dir}")
+        msg = f"No CSV files found in {results_dir}"
+        raise FileNotFoundError(msg)
     return csvs[-1]
 
 
@@ -30,22 +34,24 @@ def _resolve_results_dir(
     config_model: ConfigurationModel, simulate_name: str | None = None
 ) -> Path:
     """Resolve the CSV backend output directory for a simulate target."""
-
     simulate_block = config_model.simulate
     if not simulate_block:
-        raise ValueError("config.simulate must be non-empty")
+        msg = "config.simulate must be non-empty"
+        raise ValueError(msg)
 
     if simulate_name is None:
         simulate_cfg = next(iter(simulate_block.values()))
     else:
         simulate_cfg = simulate_block.get(simulate_name)
         if simulate_cfg is None:
-            raise KeyError(f"simulate target {simulate_name!r} not found")
+            msg = f"simulate target {simulate_name!r} not found"
+            raise KeyError(msg)
 
     backend_name = getattr(simulate_cfg, "backend", None) or "default"
     backend_model = config_model.backends.get(backend_name)
     if backend_model is None:
-        raise KeyError(f"backend {backend_name!r} not found in config.backends")
+        msg = f"backend {backend_name!r} not found in config.backends"
+        raise KeyError(msg)
 
     backend_cfg = backend_model.model_dump()
 
@@ -61,15 +67,16 @@ def _resolve_results_dir(
 
 
 def plot_compare(classic_csv: Path, linear_csv: Path, out_path: Path) -> None:
+    """Render classic vs linear-chain SIR plots from CSV outputs."""
     df_classic = pd.read_csv(classic_csv, header=None)
     df_linear = pd.read_csv(linear_csv, header=None)
 
-    if df_classic.shape[1] < 4:
-        raise ValueError("Classic CSV must have at least 4 columns (t,S,I,R)")
-    if df_linear.shape[1] < 6:
-        raise ValueError(
-            "Linear-chain CSV must have at least 6 columns (t,S,I1,I2,I3,R)"
-        )
+    if df_classic.shape[1] < MIN_CLASSIC_COLS:
+        msg = "Classic CSV must have at least 4 columns (t,S,I,R)"
+        raise ValueError(msg)
+    if df_linear.shape[1] < MIN_LINEAR_COLS:
+        msg = "Linear-chain CSV must have at least 6 columns (t,S,I1,I2,I3,R)"
+        raise ValueError(msg)
 
     df_classic = df_classic.iloc[:, :4]
     df_classic.columns = ["time", "S", "I", "R"]
@@ -86,7 +93,7 @@ def plot_compare(classic_csv: Path, linear_csv: Path, out_path: Path) -> None:
     axes[0].set_title("Classic SIR")
     axes[0].set_xlabel("Time")
     axes[0].set_ylabel("Population")
-    axes[0].grid(True)
+    axes[0].grid(visible=True)
     axes[0].legend()
 
     axes[1].plot(df_linear["time"], df_linear["S"], label="S")
@@ -94,7 +101,7 @@ def plot_compare(classic_csv: Path, linear_csv: Path, out_path: Path) -> None:
     axes[1].plot(df_linear["time"], df_linear["R"], label="R")
     axes[1].set_title("Linear-chain SIR")
     axes[1].set_xlabel("Time")
-    axes[1].grid(True)
+    axes[1].grid(visible=True)
     axes[1].legend()
 
     fig.suptitle("Classic vs Linear-chain SIR (same beta/gamma)")
@@ -106,11 +113,14 @@ def plot_compare(classic_csv: Path, linear_csv: Path, out_path: Path) -> None:
 
 
 def main() -> None:
+    """Entry point: load config, locate CSVs, and plot comparison."""
     args = sys.argv[1:]
     if len(args) != ARG_LEN:
-        raise SystemExit(
-            "Usage: python postprocessing/SIR_linear_chain_compare_op_engine.py <config.yml> <output.png>"
+        msg = (
+            "Usage: python postprocessing/SIR_linear_chain_compare_op_engine.py "
+            "<config.yml> <output.png>"
         )
+        raise SystemExit(msg)
 
     cfg_path = Path(args[0])
     out_path = Path(args[1])
@@ -118,8 +128,9 @@ def main() -> None:
     config_model = ConfigurationModel.from_yaml(cfg_path)
 
     simulate_names = list(OrderedDict(config_model.simulate).keys())
-    if len(simulate_names) < 2:
-        raise ValueError("Config must define at least two simulate targets")
+    if len(simulate_names) < MIN_SIMULATE_TARGETS:
+        msg = "Config must define at least two simulate targets"
+        raise ValueError(msg)
 
     classic_name, linear_name = simulate_names[:2]
 

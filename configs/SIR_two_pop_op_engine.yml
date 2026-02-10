@@ -1,4 +1,5 @@
-# Two-population SIR with non-homogeneous mixing, solved via op_engine through flepimop2.
+# Two-population SIR with non-homogeneous mixing, solved via op_engine through
+# flepimop2.
 name: SIR_two_pop_op_engine
 
 system:
@@ -7,11 +8,15 @@ system:
       kind: expr
       state: [S1, I1, R1, S2, I2, R2]
       equations:
-        S1: "-beta * (c11 * I1 / (S1 + I1 + R1) + c12 * I2 / (S2 + I2 + R2)) * S1"
-        I1: "beta * (c11 * I1 / (S1 + I1 + R1) + c12 * I2 / (S2 + I2 + R2)) * S1 - gamma * I1"
+        S1: "-beta * (c11 * I1 / (S1 + I1 + R1) + c12 * I2 / (S2 + I2 + R2)) *
+          S1"
+        I1: "beta * (c11 * I1 / (S1 + I1 + R1) + c12 * I2 / (S2 + I2 + R2)) *
+          S1 - gamma * I1"
         R1: "gamma * I1"
-        S2: "-beta * (c21 * I1 / (S1 + I1 + R1) + c22 * I2 / (S2 + I2 + R2)) * S2"
-        I2: "beta * (c21 * I1 / (S1 + I1 + R1) + c22 * I2 / (S2 + I2 + R2)) * S2 - gamma * I2"
+        S2: "-beta * (c21 * I1 / (S1 + I1 + R1) + c22 * I2 / (S2 + I2 + R2)) *
+          S2"
+        I2: "beta * (c21 * I1 / (S1 + I1 + R1) + c22 * I2 / (S2 + I2 + R2)) *
+          S2 - gamma * I2"
         R2: "gamma * I2"
 
 engine:

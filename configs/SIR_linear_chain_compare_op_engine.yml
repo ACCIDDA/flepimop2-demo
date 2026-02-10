@@ -1,4 +1,5 @@
-# Compare classic SIR vs linear-chain SIR using op_system + op_engine via flepimop2.
+# Compare classic SIR vs linear-chain SIR using op_system + op_engine via
+# flepimop2.
 name: SIR_linear_chain_compare_op_engine
 
 system:
@@ -56,8 +57,9 @@ simulate:
 process:
   plot_compare:
     module: shell
-    command: ./venv/bin/python postprocessing/SIR_linear_chain_compare_op_engine.py
+    command: ./venv/bin/python
     args:
+      - postprocessing/SIR_linear_chain_compare_op_engine.py
       - configs/SIR_linear_chain_compare_op_engine.yml
       - model_output/SIR_linear_chain/compare.png
 
