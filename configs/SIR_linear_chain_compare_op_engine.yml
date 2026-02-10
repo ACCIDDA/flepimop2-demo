@@ -57,7 +57,7 @@ simulate:
 process:
   plot_compare:
     module: shell
-    command: ./venv/bin/python
+    command: python
     args:
       - postprocessing/SIR_linear_chain_compare_op_engine.py
       - configs/SIR_linear_chain_compare_op_engine.yml
