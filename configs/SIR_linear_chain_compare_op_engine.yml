@@ -1,0 +1,88 @@
+# Compare classic SIR vs linear-chain SIR using op_system + op_engine via flepimop2.
+name: SIR_linear_chain_compare_op_engine
+
+system:
+  sir_classic:
+    module: op_system
+    spec:
+      kind: expr
+      state: [S, I, R]
+      equations:
+        S: "-beta * S * I / (S + I + R)"
+        I: "beta * S * I / (S + I + R) - gamma * I"
+        R: "gamma * I"
+  sir_linear_chain:
+    module: op_system
+    spec:
+      kind: expr
+      state: [S, I1, I2, I3, R]
+      equations:
+        S: "-beta * S * (I1 + I2 + I3) / (S + I1 + I2 + I3 + R)"
+        I1: "beta * S * (I1 + I2 + I3) / (S + I1 + I2 + I3 + R) - gamma * I1"
+        I2: "gamma * I1 - gamma * I2"
+        I3: "gamma * I2 - gamma * I3"
+        R: "gamma * I3"
+
+engine:
+  op_engine_heun:
+    module: op_engine
+    config:
+      method: heun
+      adaptive: false
+      strict: true
+      rtol: 1.0e-6
+      atol: 1.0e-9
+
+backend:
+  classic_csv:
+    module: csv
+    root: model_output/SIR_linear_chain/classic
+  linear_chain_csv:
+    module: csv
+    root: model_output/SIR_linear_chain/linear_chain
+
+simulate:
+  classic:
+    system: sir_classic
+    engine: op_engine_heun
+    backend: classic_csv
+    times: 0.0:1.0:160.0
+  linear_chain:
+    system: sir_linear_chain
+    engine: op_engine_heun
+    backend: linear_chain_csv
+    times: 0.0:1.0:160.0
+
+process:
+  plot_compare:
+    module: shell
+    command: ./venv/bin/python postprocessing/SIR_linear_chain_compare_op_engine.py
+    args:
+      - configs/SIR_linear_chain_compare_op_engine.yml
+      - model_output/SIR_linear_chain/compare.png
+
+parameter:
+  beta:
+    module: fixed
+    value: 0.3
+  gamma:
+    module: fixed
+    value: 0.1
+  s0:
+    module: fixed
+    value: 999.0
+  i0:
+    module: fixed
+    value: 1.0
+  r0:
+    module: fixed
+    value: 0.0
+  i1_0:
+    module: fixed
+    value: 1.0
+  i2_0:
+    module: fixed
+    value: 0.0
+  i3_0:
+    module: fixed
+    value: 0.0

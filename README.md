@@ -348,6 +348,13 @@ flepimop2 process configs/SIR_op_engine.yml
 
 ------------------------------------------------------------------------
 
+## Additional `op_system` + `op_engine` demos
+
+- Two-population, non-homogeneous mixing: [configs/SIR_two_pop_op_engine.yml](configs/SIR_two_pop_op_engine.yml) with plot helper [postprocessing/SIR_two_pop_plot_op_engine.py](postprocessing/SIR_two_pop_plot_op_engine.py). The process target runs the simulation and plot; invoke `flepimop2 process --target plot_demo configs/SIR_two_pop_op_engine.yml`.
+- Linear-chain vs classic SIR: [configs/SIR_linear_chain_compare_op_engine.yml](configs/SIR_linear_chain_compare_op_engine.yml) holds two systems sharing the same parameters; the process target `plot_compare` runs both simulate targets and renders a side-by-side figure. Run `flepimop2 process --target plot_compare configs/SIR_linear_chain_compare_op_engine.yml` to generate `model_output/SIR_linear_chain/compare.png`.
+
+------------------------------------------------------------------------
+
 ## Summary
 
 This demo illustrates:
