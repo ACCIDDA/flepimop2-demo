@@ -1,13 +1,15 @@
-name: 'CI'
+name: 'Integration Test'
 
 'on':
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '15 9 * * 1'
   workflow_dispatch:
 
 jobs:
-  ci:
+  integration-test:
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Install just'
@@ -30,6 +32,6 @@ jobs:
       - name: 'Update conda environment'
         run: 'conda env update --name ci --file environment.yaml --prune'
         if: "steps.cache-conda.outputs.cache-hit != 'true'"
-      - name: 'Run ci'
+      - name: 'Run integration test'
         shell: bash -el {0}
-        run: 'just ci'
+        run: 'just integration-test'

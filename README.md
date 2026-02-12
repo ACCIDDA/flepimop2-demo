@@ -17,6 +17,7 @@ The goal is to illustrate:
 
 To create a conda environment containing `flepimop2`, `op_engine`, the `flepimop2-op-engine` adapter, and all demo dependencies, run:
 
+<!-- skip-test -->
 ```bash
 just venv
 conda activate ./venv
@@ -41,6 +42,7 @@ https://posit-dev.github.io/air/cli.html
 
 #### macOS (Homebrew)
 
+<!-- skip-test -->
 ```bash
 brew install r-air
 ```
@@ -53,9 +55,11 @@ https://github.com/posit-dev/air/releases
 
 ### Verify installation
 
+<!-- skip-test -->
 ```bash
 air --version
 ```
+
 ------------------------------------------------------------------------
 
 ## Development Installation Overrides
@@ -72,6 +76,7 @@ dependencies:
 
 When running:
 
+<!-- skip-test -->
 ```bash
 just venv
 ```
@@ -80,6 +85,7 @@ this file will be merged with `environment.yaml`.
 
 Alternatively, individual packages can be reinstalled inside the environment:
 
+<!-- skip-test -->
 ```bash
 pip install --force-reinstall file:///path/to/flepimop2
 pip install --force-reinstall file:///path/to/op_engine
