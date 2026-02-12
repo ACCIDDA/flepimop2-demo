@@ -55,5 +55,10 @@ ci-ruff:
 	ruff check .
 
 [group('ci')]
-[doc('Run all continuous integration checks')]
+[doc('Run all CI checks')]
 ci: yamllint ci-air ci-ruff
+
+[group('ci')]
+[doc('Run integration test')]
+integration-test:
+	python .github/scripts/test_readme_commands.py
