@@ -13,6 +13,15 @@ The goal is to illustrate:
 
 ------------------------------------------------------------------------
 
+## Prerequisites
+
+* [`git`](https://git-scm.com/): Version control system for tracking changes to your project files and collaborating with others.
+* [`conda`](https://anaconda.org/): Package and environment manager for creating isolated Python/R environments with all required dependencies.
+* [`just`](https://just.systems/): Command runner for executing common project tasks like setting up environments, running tests, and building configs.
+* [`air`](https://posit-dev.github.io/air/): R code formatter and linter for maintaining consistent R code style in postprocessing scripts. Unlike other linting tools used by this project template this tool cannot be managed via `conda`.
+
+------------------------------------------------------------------------
+
 ## Installation
 
 To create a conda environment containing `flepimop2`, `op_engine`, the `flepimop2-op-engine` adapter, and all demo dependencies, run:
@@ -24,41 +33,6 @@ conda activate ./venv
 ```
 
 This creates a local environment under `./venv/` using `environment.yaml`.
-
-------------------------------------------------------------------------
-
-## R Dependencies (Postprocessing)
-
-Some postprocessing examples in this repository use R-based scripts.
-
-### `air` (R formatter/linter) is a separate tool
-
-This repository uses [`air`](https://posit-dev.github.io/air/) to format and lint R code (e.g., in `postprocessing/`). **Unlike the other linting tools used by this repo, `air` cannot be managed via `conda`** because it is **not an R package** (i.e., it is not installed with `install.packages()`); it is a standalone command-line tool.
-
-See the `air` CLI documentation:  
-https://posit-dev.github.io/air/cli.html
-
-### Installing `air`
-
-#### macOS (Homebrew)
-
-<!-- skip-test -->
-```bash
-brew install r-air
-```
-
-#### Other platforms
-
-Install `air` from the official release artifacts and ensure the `air` binary is available on your `PATH`:
-
-https://github.com/posit-dev/air/releases
-
-### Verify installation
-
-<!-- skip-test -->
-```bash
-air --version
-```
 
 ------------------------------------------------------------------------
 
