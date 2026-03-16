@@ -3,6 +3,7 @@ name: SIR_op_engine
 
 system:
   - module: wrapper
+    state_change: flow
     script: model_input/plugins/SIR.py
 
 engine:
