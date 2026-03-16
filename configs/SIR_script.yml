@@ -2,10 +2,12 @@ name: SIR_handwritten_model
 
 system:
   - module: wrapper
+    state_change: flow
     script: model_input/plugins/SIR.py
 
 engine:
   - module: wrapper
+    state_change: flow
     script: model_input/plugins/solve_ivp.py
 
 simulate:
