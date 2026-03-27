@@ -11,6 +11,8 @@ name: 'Integration Test'
 jobs:
   integration-test:
     runs-on: 'ubuntu-latest'
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     steps:
       - name: 'Install just'
         uses: 'extractions/setup-just@v3'
@@ -19,13 +21,14 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@v6'
       - name: 'Setup conda'
-        uses: 'conda-incubator/setup-miniconda@v3'
+        uses: 'conda-incubator/setup-miniconda@v3.3.0'
         with:
           activate-environment: 'ci'
           auto-update-conda: true
+          channels: 'conda-forge,defaults,r,dnachun'
       - name: 'Cache conda'
         id: 'cache-conda'
-        uses: 'actions/cache@v4'
+        uses: 'actions/cache@v5'
         with:
           path: '${{ env.CONDA }}/envs'
           key: "${{ runner.os }}-${{ hashFiles('environment.yaml') }}"
