@@ -1,0 +1,170 @@
+name: SIRHD_vax
+
+system:
+  - module: op_system
+    state_change: flow
+    spec:
+      kind: transitions
+
+      axes:
+        - name: vax
+          coords: [u, v, w]
+
+      state:
+        - S[vax]
+        - I[vax]
+        - H[vax]
+        - R[vax]
+        - D
+
+      aliases:
+        # yamllint disable-line rule:line-length
+        N: "sum_over(vax=j, S[vax=j] + I[vax=j] + H[vax=j] + R[vax=j])"
+        lam: "beta * sum_over(vax=j, I[vax=j]) / N"
+        rho_eff[vax]: "q[vax] * rho"
+        delta_eff[vax]: "q[vax] * delta"
+        # Per-stratum living population
+        pop[vax]: "S[vax] + I[vax] + H[vax] + R[vax]"
+        # Coverage = fraction ever vaccinated (v + w)
+        coverage: "(pop__vax_v + pop__vax_w) / n0"
+        # Sigmoid ramp avoids hard discontinuity at t_s
+        # yamllint disable-line rule:line-length
+        u: "np.maximum(0.0, k * (cap_l - coverage)) / (1.0 + np.exp(-ramp * (t - t_s)))"
+
+      transitions:
+        # Infection
+        - from: S[vax]
+          to: I[vax]
+          rate: lam
+
+        # Hospitalization vs recovery
+        - from: I[vax]
+          to: H[vax]
+          rate: rho_eff[vax] / t_inf
+        - from: I[vax]
+          to: R[vax]
+          rate: (1 - rho_eff[vax]) / t_inf
+
+        # Death vs discharge
+        - from: H[vax]
+          to: D
+          rate: delta_eff[vax] / t_hosp
+        - from: H[vax]
+          to: R[vax]
+          rate: (1 - delta_eff[vax]) / t_hosp
+
+        # Immunity waning
+        - from: R[vax]
+          to: S[vax]
+          rate: alpha
+
+        # Vaccination (u -> v) — logistic saturation
+        - from: S__vax_u
+          to: S__vax_v
+          rate: u
+        - from: R__vax_u
+          to: R__vax_v
+          rate: u
+
+        # Vaccine protection waning (v -> w, no re-vaccination)
+        - from: S__vax_v
+          to: S__vax_w
+          rate: omega
+        - from: R__vax_v
+          to: R__vax_w
+          rate: omega
+
+engine:
+  - module: op_engine
+    state_change: flow
+    config:
+      method: heun
+      adaptive: true
+      rtol: 1.0e-6
+      atol: 1.0e-8
+      dt_min: 1.0e-6
+      dt_max: 2.0
+      safety: 0.9
+
+simulate:
+  demo:
+    times: "0.0:1.0:365.0"
+    initial_state:
+      S__vax_u: 5990
+      S__vax_v: 0
+      S__vax_w: 0
+      I__vax_u: 10
+      I__vax_v: 0
+      I__vax_w: 0
+      H__vax_u: 0
+      H__vax_v: 0
+      H__vax_w: 0
+      R__vax_u: 4000
+      R__vax_v: 0
+      R__vax_w: 0
+      D: 0
+
+backend:
+  - module: csv
+
+process:
+  plot:
+    module: shell
+    command: python postprocessing/SIRHD_incidence_plot.py
+    args:
+      - configs/SIRHD_vax.yml
+      - model_output/SIRHD_vax_plot.png
+
+parameter:
+  # -- Transmission --
+  beta:  # contact rate (per day)
+    module: fixed
+    value: 0.3
+  t_inf:  # mean infectious period (days)
+    module: fixed
+    value: 7.0
+
+  # -- Clinical progression --
+  rho:  # probability of hospitalisation given infection
+    module: fixed
+    value: 0.05
+  delta:  # probability of death given hospitalisation
+    module: fixed
+    value: 0.1
+  t_hosp:  # mean hospital stay (days)
+    module: fixed
+    value: 10.0
+  alpha:  # natural immunity waning rate (1/days)
+    module: fixed
+    value: 0.005
+
+  # -- Vaccination campaign --
+  k:  # campaign intensity (vaccination rate constant, per day)
+    module: fixed
+    value: 0.05
+  cap_l:  # coverage cap (fraction of population)
+    module: fixed
+    value: 0.5
+  t_s:  # campaign midpoint (day sigmoid reaches 50%)
+    module: fixed
+    value: 30.0
+  ramp:  # sigmoid steepness for campaign ramp-up
+    module: fixed
+    value: 0.5
+  n0:  # reference population size for coverage calculation
+    module: fixed
+    value: 10000.0
+
+  # -- Vaccine effects --
+  omega:  # vaccine protection waning rate (~6 months: 1/200)
+    module: fixed
+    value: 0.005
+  q__vax_u:  # severity multiplier, unvaccinated (baseline)
+    module: fixed
+    value: 1.0
+  q__vax_v:  # severity multiplier, vaccinated (70% reduction)
+    module: fixed
+    value: 0.3
+  q__vax_w:  # severity multiplier, waned (back to baseline)
+    module: fixed
+    value: 1.0
