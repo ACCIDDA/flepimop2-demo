@@ -6,6 +6,7 @@ When axes are present the raw states are aggregated before plotting.
 
 from __future__ import annotations
 
+import itertools
 import re
 import sys
 from pathlib import Path
@@ -63,6 +64,60 @@ def _get_param(config_model: ConfigurationModel, name: str) -> float:
     return float(config_model.parameters[name].value)
 
 
+def _state_names_from_config(config_model: ConfigurationModel) -> list[str]:
+    """Return concrete state names in CSV column order from the system spec."""
+    first_system = next(iter(config_model.systems.values()))
+    spec = getattr(first_system, "spec", None)
+    if not isinstance(spec, dict):
+        msg = "system spec must be available to derive state names"
+        raise ValueError(msg)
+
+    state_templates = spec.get("state")
+    if not isinstance(state_templates, list):
+        msg = "system spec must define a state list"
+        raise ValueError(msg)
+
+    axes = {
+        axis["name"]: axis["coords"]
+        for axis in spec.get("axes", [])
+        if isinstance(axis, dict)
+    }
+
+    state_names: list[str] = []
+    for template in state_templates:
+        state_names.extend(_expand_state_template(str(template), axes))
+    return state_names
+
+
+def _expand_state_template(
+    template: str,
+    axes: dict[str, list[str]],
+) -> list[str]:
+    """Expand op_system state templates like ``S[vax]`` into concrete names."""
+    match = re.search(r"\[([^\]]+)\]", template)
+    if match is None:
+        return [template]
+
+    axis_names = [axis.strip() for axis in match.group(1).split(",")]
+    coord_lists: list[list[str]] = []
+    for axis_name in axis_names:
+        coords = axes.get(axis_name)
+        if coords is None:
+            msg = f"state template references unknown axis {axis_name!r}"
+            raise ValueError(msg)
+        coord_lists.append(coords)
+
+    expanded: list[str] = []
+    for coords in itertools.product(*coord_lists):
+        suffix = "__" + "__".join(
+            f"{axis_name}_{coord}"
+            for axis_name, coord in zip(axis_names, coords, strict=True)
+        )
+        candidate = f"{template[: match.start()]}{suffix}{template[match.end() :]}"
+        expanded.extend(_expand_state_template(candidate, axes))
+    return expanded
+
+
 def _aggregate(df: pd.DataFrame, state_names: list[str]) -> pd.DataFrame:
     """Sum columns sharing the same base compartment (e.g. S__vax_u + S__vax_v → S)."""
     structured = any("__" in s for s in state_names)
@@ -91,8 +146,11 @@ def _compute_daily_incidence(
     config_model: ConfigurationModel,
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
     """Return (daily_cases, daily_hosp, daily_deaths) as pd.Series."""
-    beta = _get_param(config_model, "beta")
     t_inf = _get_param(config_model, "t_inf")
+    if "beta" in config_model.parameters:
+        beta = _get_param(config_model, "beta")
+    else:
+        beta = _get_param(config_model, "r0") / t_inf
     rho = _get_param(config_model, "rho")
     delta = _get_param(config_model, "delta")
     t_hosp = _get_param(config_model, "t_hosp")
@@ -168,7 +226,7 @@ def _compute_cumulative_vax(
     if "k" in config_model.parameters:
         k = _get_param(config_model, "k")
         cap_l = _get_param(config_model, "cap_l")
-        t_s = _get_param(config_model, "t_s")
+        t_start = _get_param(config_model, "t_start")
         ramp = _get_param(config_model, "ramp")
         n0 = _get_param(config_model, "n0")
         pop_vw = sum(
@@ -177,8 +235,8 @@ def _compute_cumulative_vax(
             if c.endswith(("_v", "_w")) and not c.startswith("D")
         )
         coverage = pop_vw / n0
-        sigmoid = 1.0 / (1.0 + np.exp(-ramp * (time - t_s)))
-        u_rate = np.maximum(0.0, k * (cap_l - coverage)) * sigmoid
+        rollout = 1.0 - np.exp(-ramp * np.maximum(0.0, time - t_start))
+        u_rate = np.maximum(0.0, k * (cap_l - coverage)) * rollout
         daily_vax = u_rate * (df[s_u_col] + df[r_u_col])
     else:
         nu = _get_param(config_model, "nu")
@@ -203,8 +261,7 @@ def main() -> None:
     config_model = ConfigurationModel.from_yaml(cfg_path)
 
     # --- load simulation CSV --------------------------------------------------
-    first_sim = next(iter(config_model.simulate.values()))
-    state_names = list(first_sim.initial_state.keys())
+    state_names = _state_names_from_config(config_model)
     n_cols = len(state_names) + 1
 
     results_dir = _resolve_results_dir(config_model)
@@ -264,13 +321,39 @@ def _render_figure(  # noqa: PLR0913
 
     colors = {"S": "C0", "I": "C1", "H": "C2", "R": "C3", "D": "C4"}
 
-    ax = axes[0]
-    for comp in COMPARTMENTS:
-        ax.plot(df["time"], df[comp], label=comp, color=colors[comp], linewidth=1.2)
-    ax.set_ylabel("Population")
-    ax.set_title(f"{config_model.name} — Prevalence{agg_note}")
-    ax.legend(loc="right")
-    ax.grid(alpha=0.3)
+    ax_left = axes[0]
+    ax_right = ax_left.twinx()
+
+    for comp in ("S", "R"):
+        ax_left.plot(
+            df["time"],
+            df[comp],
+            label=comp,
+            color=colors[comp],
+            linewidth=1.6,
+        )
+
+    for comp in ("I",):
+        ax_right.plot(
+            df["time"],
+            df[comp],
+            label=comp,
+            color=colors[comp],
+            linewidth=1.4,
+        )
+
+    ax_left.set_ylabel("Population (S, R)")
+    ax_right.set_ylabel("Population (I)")
+    ax_left.set_title(f"{config_model.name} — Prevalence{agg_note}")
+    ax_left.grid(alpha=0.3)
+
+    left_handles, left_labels = ax_left.get_legend_handles_labels()
+    right_handles, right_labels = ax_right.get_legend_handles_labels()
+    ax_left.legend(
+        left_handles + right_handles,
+        left_labels + right_labels,
+        loc="right",
+    )
 
     for ax, data, ylabel, title, color in [
         (axes[1], wk_cases, "Weekly cases", "Weekly Incident Cases", "C1"),
