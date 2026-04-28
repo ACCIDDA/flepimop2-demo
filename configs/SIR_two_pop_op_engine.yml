@@ -1,0 +1,90 @@
+# Two-population SIR with non-homogeneous mixing, solved via op_engine through
+# flepimop2.
+name: SIR_two_pop_op_engine
+
+system:
+  - module: op_system
+    spec:
+      kind: expr
+      state: [S1, I1, R1, S2, I2, R2]
+      equations:
+        S1: "-beta * (c11 * I1 / (S1 + I1 + R1) + c12 * I2 / (S2 + I2 + R2)) *
+          S1"
+        I1: "beta * (c11 * I1 / (S1 + I1 + R1) + c12 * I2 / (S2 + I2 + R2)) *
+          S1 - gamma * I1"
+        R1: "gamma * I1"
+        S2: "-beta * (c21 * I1 / (S1 + I1 + R1) + c22 * I2 / (S2 + I2 + R2)) *
+          S2"
+        I2: "beta * (c21 * I1 / (S1 + I1 + R1) + c22 * I2 / (S2 + I2 + R2)) *
+          S2 - gamma * I2"
+        R2: "gamma * I2"
+
+engine:
+  - module: op_engine
+    config:
+      method: heun
+      adaptive: false
+      strict: true
+      rtol: 1.0e-6
+      atol: 1.0e-9
+
+simulate:
+  demo:
+    times: 0.0:10.0:160.0
+  hires:
+    times: 0.0:0.1:160.0
+
+backend:
+  - module: csv
+
+process:
+  run_demo:
+    module: shell
+    command: python model_input/plugins/two_pop_sim.py
+    args:
+      - configs/SIR_two_pop_op_engine.yml
+      - demo
+  plot_demo:
+    module: shell
+    command: python postprocessing/SIR_two_pop_plot_op_engine.py
+    args:
+      - configs/SIR_two_pop_op_engine.yml
+      - model_output/SIR_two_pop_demo.png
+
+parameter:
+  beta:
+    module: fixed
+    value: 0.3
+  gamma:
+    module: fixed
+    value: 0.1
+  c11:
+    module: fixed
+    value: 1.0
+  c12:
+    module: fixed
+    value: 0.3
+  c21:
+    module: fixed
+    value: 0.4
+  c22:
+    module: fixed
+    value: 1.0
+  s1_0:
+    module: fixed
+    value: 500.0
+  i1_0:
+    module: fixed
+    value: 10.0
+  r1_0:
+    module: fixed
+    value: 0.0
+  s2_0:
+    module: fixed
+    value: 500.0
+  i2_0:
+    module: fixed
+    value: 1.0
+  r2_0:
+    module: fixed
+    value: 0.0
