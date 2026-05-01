@@ -1,0 +1,119 @@
+name: SIRHD_classic
+
+system:
+  - module: op_system
+    state_change: flow
+    spec:
+      kind: transitions
+
+      state:
+        - S
+        - I
+        - H
+        - R
+        - D
+
+      aliases:
+        N: "S + I + H + R"
+        lam: "beta * I / N"
+
+      transitions:
+        # Infection
+        - from: S
+          to: I
+          rate: lam
+
+        # Hospitalization vs recovery
+        - from: I
+          to: H
+          rate: rho / t_inf
+        - from: I
+          to: R
+          rate: (1 - rho) / t_inf
+
+        # Death vs discharge
+        - from: H
+          to: D
+          rate: delta / t_hosp
+        - from: H
+          to: R
+          rate: (1 - delta) / t_hosp
+
+        # Immunity waning
+        - from: R
+          to: S
+          rate: alpha
+
+      initial_state:
+        S: s0
+        I: i0
+        H: h0
+        R: r0
+        D: d0
+
+engine:
+  - module: op_engine
+    state_change: flow
+    config:
+      method: heun
+      adaptive: true
+      rtol: 1.0e-6
+      atol: 1.0e-8
+      dt_min: 1.0e-6
+      dt_max: 2.0
+      safety: 0.9
+
+simulate:
+  demo:
+    times: "0.0:1.0:365.0"
+
+backend:
+  - module: csv
+
+process:
+  plot:
+    module: shell
+    command: python postprocessing/SIRHD_incidence_plot.py
+    args:
+      - configs/SIRHD_classic.yml
+      - model_output/SIRHD_classic_plot.png
+
+parameter:
+  # -- Initial state --
+  s0:
+    module: fixed
+    value: 5990
+  i0:
+    module: fixed
+    value: 10
+  h0:
+    module: fixed
+    value: 0
+  r0:
+    module: fixed
+    value: 4000
+  d0:
+    module: fixed
+    value: 0
+
+  # -- Transmission --
+  beta:  # contact rate (per day)
+    module: fixed
+    value: 0.3
+  t_inf:  # mean infectious period (days)
+    module: fixed
+    value: 7.0
+
+  # -- Clinical progression --
+  rho:  # probability of hospitalisation given infection
+    module: fixed
+    value: 0.05
+  delta:  # probability of death given hospitalisation
+    module: fixed
+    value: 0.1
+  t_hosp:  # mean hospital stay (days)
+    module: fixed
+    value: 10.0
+  alpha:  # natural immunity waning rate (1/days)
+    module: fixed
+    value: 0.005

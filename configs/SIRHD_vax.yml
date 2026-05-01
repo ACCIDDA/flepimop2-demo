@@ -1,0 +1,252 @@
+name: SIRHD_vax
+
+system:
+  - module: op_system
+    state_change: flow
+    spec:
+      kind: transitions
+
+      axes:
+        - name: vax
+          coords: [u, v, w]
+
+      state:
+        - S[vax]
+        - I[vax]
+        - H[vax]
+        - R[vax]
+        - D
+
+      aliases:
+        # yamllint disable-line rule:line-length
+        N: "sum_over(vax=j, S[vax=j] + I[vax=j] + H[vax=j] + R[vax=j])"
+        lam: "(r0 / t_inf) * sum_over(vax=j, I[vax=j]) / N"
+        rho_eff[vax]: "q[vax] * rho"
+        delta_eff[vax]: "q[vax] * delta"
+        # Per-stratum living population
+        pop[vax]: "S[vax] + I[vax] + H[vax] + R[vax]"
+        # Coverage = fraction ever vaccinated (v + w)
+        coverage: "sum_over(vax=j IN [v, w], pop[vax=j]) / n0"
+        # Rollout: delayed exponential gating (zero before t_start)
+        rollout: "1.0 - np.exp(-ramp * np.maximum(0.0, t - t_start))"
+        # Vaccination rate: coverage saturation × temporal gate
+        # yamllint disable-line rule:line-length
+        u: "np.maximum(0.0, k * (cap_l - coverage)) * rollout"
+
+      transitions:
+        # Infection
+        - from: S[vax]
+          to: I[vax]
+          rate: lam
+
+        # Hospitalization vs recovery
+        - from: I[vax]
+          to: H[vax]
+          rate: rho_eff[vax] / t_inf
+        - from: I[vax]
+          to: R[vax]
+          rate: (1 - rho_eff[vax]) / t_inf
+
+        # Death vs discharge
+        - from: H[vax]
+          to: D
+          rate: delta_eff[vax] / t_hosp
+        - from: H[vax]
+          to: R[vax]
+          rate: (1 - delta_eff[vax]) / t_hosp
+
+        # Immunity waning
+        - from: R[vax]
+          to: S[vax]
+          rate: alpha
+
+        # Vaccination (u -> v) — coverage saturation
+        - coord_shift:
+            vax: "u -> v"
+          apply_to: [S, R]
+          rate: u
+
+        # Vaccine protection waning (v -> w, no re-vaccination)
+        - coord_shift:
+            vax: "v -> w"
+          apply_to: [S, R]
+          rate: omega
+
+      initial_state:
+        S[vax]: s0[vax]
+        H[vax]: h0[vax]
+        I[vax]: i0[vax]
+        R[vax]: r0[vax]
+        D: d0
+
+engine:
+  - module: op_engine
+    state_change: flow
+    config:
+      method: heun
+      adaptive: true
+      rtol: 1.0e-3
+      atol: 1.0e-5
+      dt_min: 1.0e-10
+      dt_max: 2.0
+      safety: 0.9
+
+scenarios:
+  vax_campaign:
+    module: grid
+    parameters:
+      r0: [1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0]
+      cap_l:
+        [
+          0.30,
+          0.35,
+          0.40,
+          0.45,
+          0.50,
+          0.55,
+          0.60,
+          0.65,
+          0.70,
+        ]
+
+  panel_grid:
+    module: grid
+    parameters:
+      t_start: [0, 35, 70]
+      # susceptible-compartment share at t=0 (S only, not S+I+R)
+      s_frac: [0.3, 0.5, 0.7]
+
+simulate:
+  demo:
+    times: "0.0:1.0:365.0"
+
+  scenario_sweep:
+    times: "0.0:1.0:365.0"
+    scenario: vax_campaign
+
+backend:
+  - module: csv
+
+process:
+  plot:
+    module: shell
+    command: python postprocessing/SIRHD_incidence_plot.py
+    args:
+      - configs/SIRHD_vax.yml
+      - model_output/SIRHD_vax_plot.png
+
+  scenario_heatmap:
+    module: shell
+    command: python postprocessing/scenario_heatmap.py
+    args:
+      - configs/SIRHD_vax.yml
+      - model_output/SIRHD_vax_scenario_heatmap.png
+
+  scenario_heatmap_3x3_plot_latest_batch:
+    module: shell
+    command: python postprocessing/scenario_heatmap_3x3.py
+    args:
+      - configs/SIRHD_vax.yml
+      - model_output/SIRHD_vax_scenario_heatmap_3x3.png
+
+  scenario_heatmap_3x3_run_batch_and_plot:
+    module: shell
+    command: python postprocessing/scenario_heatmap_3x3.py
+    args:
+      - configs/SIRHD_vax.yml
+      - model_output/SIRHD_vax_scenario_heatmap_3x3.png
+      - --run
+
+parameter:
+  # -- Transmission --
+  r0:  # basic reproduction number in wholly susceptible population
+    module: fixed
+    value: 2.0
+  t_inf:  # mean infectious period (days)
+    module: fixed
+    value: 7.0
+
+  # -- Clinical progression --
+  rho:  # probability of hospitalisation given infection
+    module: fixed
+    value: 0.025
+  delta:  # probability of death given hospitalisation
+    module: fixed
+    value: 0.1
+  t_hosp:  # mean hospital stay (days)
+    module: fixed
+    value: 10.0
+  alpha:  # natural immunity waning rate (1/days)
+    module: fixed
+    value: 0.005
+
+  # -- Vaccination campaign --
+  k:  # campaign intensity (vaccination rate constant, per day)
+    module: fixed
+    value: 0.05
+  cap_l:  # coverage cap (fraction of population)
+    module: fixed
+    value: 0.5
+  t_start:  # campaign start date (day when vaccination begins)
+    module: fixed
+    value: 35.0
+  ramp:  # post-start steepness for exponential rollout (1/days)
+    module: fixed
+    value: 0.5
+  n0:  # reference population size for coverage calculation
+    module: fixed
+    value: 10000000.0
+
+  # -- Vaccine effects --
+  omega:  # vaccine protection waning rate (~6 months: 1/200)
+    module: fixed
+    value: 0.005
+  q__vax_u:  # severity multiplier, unvaccinated (baseline)
+    module: fixed
+    value: 1.0
+  q__vax_v:  # severity multiplier, vaccinated (70% reduction)
+    module: fixed
+    value: 0.3
+  q__vax_w:  # severity multiplier, waned (back to baseline)
+    module: fixed
+    value: 1.0
+
+  s0__vax_u:
+    module: fixed
+    value: 5000000
+  s0__vax_v:
+    module: fixed
+    value: 0
+  s0__vax_w:
+    module: fixed
+    value: 0
+  i0__vax_u:
+    module: fixed
+    value: 1000
+  i0__vax_v:
+    module: fixed
+    value: 0
+  i0__vax_w:
+    module: fixed
+    value: 0
+  h0__vax_u:
+    module: fixed
+    value: 0
+  h0__vax_v:
+    module: fixed
+    value: 0
+  h0__vax_w:
+    module: fixed
+    value: 0
+  r0__vax_u:
+    module: fixed
+    value: 4999000
+  r0__vax_v:
+    module: fixed
+    value: 0
+  r0__vax_w:
+    module: fixed
+    value: 0
+  d0:
+    module: fixed
+    value: 0

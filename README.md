@@ -365,3 +365,56 @@ This demo illustrates:
 - Integrating third-party solvers such as `op_engine`
 - Coordinating Python and R workflows
 - Building composable, configuration-driven simulation pipelines
+
+------------------------------------------------------------------------
+
+## SIRHD Examples
+
+The following examples demonstrate a more complex compartmental model — an
+**SIRHD** (Susceptible → Infected → Hospitalised → Recovered / Dead) system —
+defined entirely through `op_system` configuration (no hand-written stepper
+required). Both examples use `op_engine` with an adaptive Heun solver.
+
+### Classic (flat) SIRHD
+
+A five-compartment model without stratification:
+
+```bash
+flepimop2 simulate configs/SIRHD_classic.yml -t demo
+flepimop2 process  configs/SIRHD_classic.yml -t plot
+```
+
+**Config:** `configs/SIRHD_classic.yml`
+**Plotter:** `postprocessing/SIRHD_incidence_plot.py`
+**Output:** `model_output/SIRHD_classic_plot.png`
+
+The plot produces four panels: prevalence, weekly incident cases,
+hospitalisations, and deaths.
+
+### SIRHD with vaccination
+
+Extends the classic model with a vaccination axis (`vax ∈ {u, v, w}`):
+
+| Stratum | Meaning |
+|---------|---------|
+| `u` | Unvaccinated |
+| `v` | Actively vaccinated (reduced hospitalisation/death) |
+| `w` | Waned (protection lost, no re-vaccination) |
+
+Vaccination uptake follows a logistic-saturation model gated by a smooth
+sigmoid ramp:
+
+$$u(t) = \frac{\max\!\big(0,\; k\,(L - \text{coverage})\big)}{1 + e^{-\texttt{ramp}\,(t - t_s)}}$$
+
+where `coverage` counts the ever-vaccinated fraction (`v` + `w` strata).
+
+```bash
+flepimop2 simulate configs/SIRHD_vax.yml -t demo
+flepimop2 process  configs/SIRHD_vax.yml -t plot
+```
+
+**Config:** `configs/SIRHD_vax.yml`
+**Plotter:** `postprocessing/SIRHD_incidence_plot.py` (shared with classic)
+**Output:** `model_output/SIRHD_vax_plot.png`
+
+The plot adds a fifth panel showing cumulative vaccines administered.
