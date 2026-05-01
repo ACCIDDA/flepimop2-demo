@@ -8,6 +8,7 @@ system:
 
 engine:
   - module: op_engine
+    state_change: flow
     config:
       method: heun
       adaptive: false
