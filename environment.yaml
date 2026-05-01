@@ -10,7 +10,7 @@ dependencies:
 
   - pip:
       # yamllint disable-line rule:line-length
-      - "git+https://git@github.com/ACCIDDA/flepimop2.git@generic-initial-state"
+      - "git+https://git@github.com/ACCIDDA/flepimop2.git@main"
       - "git+https://git@github.com/ACCIDDA/flepimop2-ipynbrender.git@main"
       - "op_engine @ git+https://github.com/ACCIDDA/op_engine.git@main"
       # yamllint disable-line rule:line-length
